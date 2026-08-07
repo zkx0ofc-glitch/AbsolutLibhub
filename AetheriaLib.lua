@@ -413,6 +413,256 @@ function AetheriaLib:CreateWindow(config)
             local SectionObj = {}
 
             --------------------------------------------------------------------
+-- ELEMENTO: DROPDOWN
+--------------------------------------------------------------------
+function SectionObj:CreateDropdown(drpConfig)
+    drpConfig = drpConfig or {}
+    local Name = drpConfig.Name or "Dropdown"
+    local Options = drpConfig.Options or {}
+    local Default = drpConfig.Default or Options[1] or "Nenhum"
+    local Callback = drpConfig.Callback or function() end
+
+    local Selected = Default
+    local Expanded = false
+
+    local DropdownContainer = Instance.new("Frame")
+    DropdownContainer.Size = UDim2.new(1, 0, 0, 42)
+    DropdownContainer.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+    DropdownContainer.ClipsDescendants = true
+    DropdownContainer.Parent = SectionFrame
+
+    local DrpCorner = Instance.new("UICorner")
+    DrpCorner.CornerRadius = UDim.new(0, 6)
+    DrpCorner.Parent = DropdownContainer
+
+    local Header = Instance.new("TextButton")
+    Header.Size = UDim2.new(1, 0, 0, 42)
+    Header.BackgroundTransparency = 1
+    Header.Text = ""
+    Header.Parent = DropdownContainer
+
+    local Label = Instance.new("TextLabel")
+    Label.Text = Name
+    Label.Font = Enum.Font.GothamMedium
+    Label.TextSize = 12
+    Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+    Label.Size = UDim2.new(0.5, 0, 0, 15)
+    Label.Position = UDim2.new(0, 10, 0, 6)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.BackgroundTransparency = 1
+    Label.Parent = Header
+
+    local SelectedLabel = Instance.new("TextLabel")
+    SelectedLabel.Text = Selected
+    SelectedLabel.Font = Enum.Font.Gotham
+    SelectedLabel.TextSize = 11
+    SelectedLabel.TextColor3 = AccentColor
+    SelectedLabel.Size = UDim2.new(0.4, 0, 0, 15)
+    SelectedLabel.Position = UDim2.new(0.6, -25, 0, 6)
+    SelectedLabel.TextXAlignment = Enum.TextXAlignment.Right
+    SelectedLabel.BackgroundTransparency = 1
+    SelectedLabel.Parent = Header
+
+    local Arrow = Instance.new("TextLabel")
+    Arrow.Text = "▼"
+    Arrow.Font = Enum.Font.GothamBold
+    Arrow.TextSize = 9
+    Arrow.TextColor3 = Color3.fromRGB(150, 155, 170)
+    Arrow.Size = UDim2.new(0, 15, 0, 15)
+    Arrow.Position = UDim2.new(1, -20, 0, 6)
+    Arrow.BackgroundTransparency = 1
+    Arrow.Parent = Header
+
+    local OptionHolder = Instance.new("ScrollingFrame")
+    OptionHolder.Size = UDim2.new(1, -20, 0, 0)
+    OptionHolder.Position = UDim2.new(0, 10, 0, 28)
+    OptionHolder.BackgroundTransparency = 1
+    OptionHolder.ScrollBarThickness = 2
+    OptionHolder.ScrollBarImageColor3 = AccentColor
+    OptionHolder.Parent = DropdownContainer
+
+    local OptionLayout = Instance.new("UIListLayout")
+    OptionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+    OptionLayout.Padding = UDim.new(0, 4)
+    OptionLayout.Parent = OptionHolder
+
+    local function ToggleDropdown()
+        Expanded = not Expanded
+        local targetListHeight = math.min(#Options * 24, 100)
+        local targetTotalHeight = Expanded and (32 + targetListHeight) or 42
+
+        OptionHolder.Size = UDim2.new(1, -20, 0, Expanded and targetListHeight or 0)
+        Tween(Arrow, {0.2, Enum.EasingStyle.Quart}, {Rotation = Expanded and 180 or 0})
+        Tween(DropdownContainer, {0.2, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, 0, 0, targetTotalHeight)})
+    end
+
+    Header.MouseButton1Click:Connect(ToggleDropdown)
+
+    local function PopulateOptions()
+        for _, child in pairs(OptionHolder:GetChildren()) do
+            if child:IsA("TextButton") then child:Destroy() end
+        end
+
+        for _, opt in ipairs(Options) do
+            local OptBtn = Instance.new("TextButton")
+            OptBtn.Size = UDim2.new(1, -6, 0, 20)
+            OptBtn.BackgroundColor3 = Color3.fromRGB(34, 38, 52)
+            OptBtn.Text = opt
+            OptBtn.Font = Enum.Font.Gotham
+            OptBtn.TextSize = 11
+            OptBtn.TextColor3 = opt == Selected and AccentColor or Color3.fromRGB(200, 205, 220)
+            OptBtn.Parent = OptionHolder
+
+            local OptCorner = Instance.new("UICorner")
+            OptCorner.CornerRadius = UDim.new(0, 4)
+            OptCorner.Parent = OptBtn
+
+            OptBtn.MouseButton1Click:Connect(function()
+                Selected = opt
+                SelectedLabel.Text = Selected
+                PopulateOptions()
+                ToggleDropdown()
+                task.spawn(Callback, Selected)
+            end)
+        end
+        OptionHolder.CanvasSize = UDim2.new(0, 0, 0, OptionLayout.AbsoluteContentSize.Y)
+    end
+
+    PopulateOptions()
+end
+
+--------------------------------------------------------------------
+-- ELEMENTO: KEYBIND
+--------------------------------------------------------------------
+function SectionObj:CreateKeybind(kbConfig)
+    kbConfig = kbConfig or {}
+    local Name = kbConfig.Name or "Keybind"
+    local Default = kbConfig.Default or Enum.KeyCode.E
+    local Callback = kbConfig.Callback or function() end
+
+    local CurrentKey = Default
+    local Binding = false
+
+    local KeybindFrame = Instance.new("Frame")
+    KeybindFrame.Size = UDim2.new(1, 0, 0, 32)
+    KeybindFrame.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+    KeybindFrame.Parent = SectionFrame
+
+    local KbCorner = Instance.new("UICorner")
+    KbCorner.CornerRadius = UDim.new(0, 6)
+    KbCorner.Parent = KeybindFrame
+
+    local Label = Instance.new("TextLabel")
+    Label.Text = Name
+    Label.Font = Enum.Font.GothamMedium
+    Label.TextSize = 12
+    Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+    Label.Size = UDim2.new(0.6, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.BackgroundTransparency = 1
+    Label.Parent = KeybindFrame
+
+    local KeyBtn = Instance.new("TextButton")
+    KeyBtn.Size = UDim2.new(0, 70, 0, 20)
+    KeyBtn.Position = UDim2.new(1, -80, 0.5, -10)
+    KeyBtn.BackgroundColor3 = Color3.fromRGB(36, 40, 56)
+    KeyBtn.Text = CurrentKey.Name
+    KeyBtn.Font = Enum.Font.GothamBold
+    KeyBtn.TextSize = 10
+    KeyBtn.TextColor3 = AccentColor
+    KeyBtn.Parent = KeybindFrame
+
+    local KeyBtnCorner = Instance.new("UICorner")
+    KeyBtnCorner.CornerRadius = UDim.new(0, 4)
+    KeyBtnCorner.Parent = KeyBtn
+
+    KeyBtn.MouseButton1Click:Connect(function()
+        Binding = true
+        KeyBtn.Text = "..."
+        KeyBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+    end)
+
+    UserInputService.InputBegan:Connect(function(input, gpe)
+        if Binding and input.UserInputType == Enum.UserInputType.Keyboard then
+            CurrentKey = input.KeyCode
+            Binding = false
+            KeyBtn.Text = CurrentKey.Name
+            KeyBtn.TextColor3 = AccentColor
+        elseif not gpe and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == CurrentKey then
+            task.spawn(Callback, CurrentKey)
+        end
+    end)
+end
+
+--------------------------------------------------------------------
+-- ELEMENTO: TEXTBOX
+--------------------------------------------------------------------
+function SectionObj:CreateTextBox(txtConfig)
+    txtConfig = txtConfig or {}
+    local Name = txtConfig.Name or "TextBox"
+    local Placeholder = txtConfig.Placeholder or "Digite aqui..."
+    local Callback = txtConfig.Callback or function() end
+
+    local BoxFrame = Instance.new("Frame")
+    BoxFrame.Size = UDim2.new(1, 0, 0, 36)
+    BoxFrame.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+    BoxFrame.Parent = SectionFrame
+
+    local BoxCorner = Instance.new("UICorner")
+    BoxCorner.CornerRadius = UDim.new(0, 6)
+    BoxCorner.Parent = BoxFrame
+
+    local Label = Instance.new("TextLabel")
+    Label.Text = Name
+    Label.Font = Enum.Font.GothamMedium
+    Label.TextSize = 12
+    Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+    Label.Size = UDim2.new(0.4, 0, 1, 0)
+    Label.Position = UDim2.new(0, 10, 0, 0)
+    Label.TextXAlignment = Enum.TextXAlignment.Left
+    Label.BackgroundTransparency = 1
+    Label.Parent = BoxFrame
+
+    local InputContainer = Instance.new("Frame")
+    InputContainer.Size = UDim2.new(0.55, 0, 0, 22)
+    InputContainer.Position = UDim2.new(0.45, -10, 0.5, -11)
+    InputContainer.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+    InputContainer.Parent = BoxFrame
+
+    local InputCorner = Instance.new("UICorner")
+    InputCorner.CornerRadius = UDim.new(0, 4)
+    InputCorner.Parent = InputContainer
+
+    local InputStroke = Instance.new("UIStroke")
+    InputStroke.Color = Color3.fromRGB(40, 45, 60)
+    InputStroke.Thickness = 1
+    InputStroke.Parent = InputContainer
+
+    local TextBox = Instance.new("TextBox")
+    TextBox.Size = UDim2.new(1, -10, 1, 0)
+    TextBox.Position = UDim2.new(0, 5, 0, 0)
+    TextBox.BackgroundTransparency = 1
+    TextBox.Text = ""
+    TextBox.PlaceholderText = Placeholder
+    TextBox.Font = Enum.Font.Gotham
+    TextBox.TextSize = 11
+    TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TextBox.PlaceholderColor3 = Color3.fromRGB(100, 105, 120)
+    TextBox.TextXAlignment = Enum.TextXAlignment.Left
+    TextBox.ClearTextOnFocus = false
+    TextBox.Parent = InputContainer
+
+    TextBox.Focused:Connect(function()
+        Tween(InputStroke, {0.15, Enum.EasingStyle.Quart}, {Color = AccentColor})
+    end)
+
+    TextBox.FocusLost:Connect(function(enterPressed)
+        Tween(InputStroke, {0.15, Enum.EasingStyle.Quart}, {Color = Color3.fromRGB(40, 45, 60)})
+        task.spawn(Callback, TextBox.Text, enterPressed)
+    end)
+end
+            --------------------------------------------------------------------
             -- ELEMENTO: BUTTON
             --------------------------------------------------------------------
             function SectionObj:CreateButton(btnConfig)
