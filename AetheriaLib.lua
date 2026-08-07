@@ -1,16 +1,19 @@
 --[[
-    AetheriaLib - Ultra-Modern UI Library for Roblox
+    ABSOLUTE UI LIBRARY
     Design: Advanced Glassmorphism & Dynamic ARGB Borders
 ]]
 
-local AetheriaLib = {}
-AetheriaLib.__index = AetheriaLib
+local AbsoluteLib = {}
+AbsoluteLib.__index = AbsoluteLib
 
 -- Serviços do Roblox
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local CoreGui = game:GetService("CoreGui")
 local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 -- Auxiliar de Animação (Tween)
 local function Tween(instance, info, properties)
@@ -28,15 +31,12 @@ local NotificationContainer
 local function InitNotificationSystem()
     if not NotificationGui then
         NotificationGui = Instance.new("ScreenGui")
-        NotificationGui.Name = "AetheriaNotifications"
+        NotificationGui.Name = "AbsoluteNotifications"
         NotificationGui.ResetOnSpawn = false
         
-        -- Proteção contra detecção simples de UI
-        pcall(function()
-            NotificationGui.Parent = CoreGui
-        end)
+        pcall(function() NotificationGui.Parent = CoreGui end)
         if not NotificationGui.Parent then
-            NotificationGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+            NotificationGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
         end
 
         NotificationContainer = Instance.new("Frame")
@@ -54,7 +54,7 @@ local function InitNotificationSystem()
     end
 end
 
-function AetheriaLib:Notify(config)
+function AbsoluteLib:Notify(config)
     InitNotificationSystem()
     
     local titleText = config.Title or "Notificação"
@@ -65,7 +65,7 @@ function AetheriaLib:Notify(config)
     card.Size = UDim2.new(1, 0, 0, 65)
     card.BackgroundColor3 = Color3.fromRGB(20, 22, 28)
     card.BackgroundTransparency = 0.15
-    card.Position = UDim2.new(1, 350, 0, 0) -- Fora da tela para animação
+    card.Position = UDim2.new(1, 350, 0, 0)
     card.Parent = NotificationContainer
 
     local corner = Instance.new("UICorner")
@@ -101,10 +101,8 @@ function AetheriaLib:Notify(config)
     content.BackgroundTransparency = 1
     content.Parent = card
 
-    -- Entrada fluida
     Tween(card, {0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {Position = UDim2.new(0, 0, 0, 0)})
 
-    -- Saída com Fade
     task.delay(duration, function()
         local tweenOut = Tween(card, {0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.In}, {Position = UDim2.new(1, 350, 0, 0)})
         tweenOut.Completed:Connect(function()
@@ -114,25 +112,102 @@ function AetheriaLib:Notify(config)
 end
 
 --------------------------------------------------------------------------------
--- JANELA PRINCIPAL (CreateWindow)
+-- SISTEMA DE CONFIGURAÇÕES (JSON)
 --------------------------------------------------------------------------------
-function AetheriaLib:CreateWindow(config)
+function AbsoluteLib:InitConfigSystem(windowObj, folderName)
+    folderName = folderName or "AbsoluteConfigs"
+    
+    if makefolder and not isfolder(folderName) then
+        makefolder(folderName)
+    end
+
+    local ConfigSystem = {
+        FolderName = folderName,
+        RegisteredElements = {}
+    }
+
+    function ConfigSystem:Register(id, getValueFunc, setValueFunc)
+        self.RegisteredElements[id] = { Get = getValueFunc, Set = setValueFunc }
+    end
+
+    function ConfigSystem:Save(configName)
+        if not writefile then
+            AbsoluteLib:Notify({ Title = "Erro", Content = "O seu executor não suporta salvamento de arquivos.", Duration = 3 })
+            return false
+        end
+
+        local dataToSave = {}
+        for id, element in pairs(self.RegisteredElements) do
+            dataToSave[id] = element.Get()
+        end
+
+        local filePath = self.FolderName .. "/" .. configName .. ".json"
+        local success, err = pcall(function()
+            writefile(filePath, HttpService:JSONEncode(dataToSave))
+        end)
+
+        if success then
+            AbsoluteLib:Notify({ Title = "Configurações", Content = "Perfil '" .. configName .. "' salvo com sucesso!", Duration = 2.5 })
+            return true
+        else
+            warn("[AbsoluteLib] Erro ao salvar config: " .. tostring(err))
+            return false
+        end
+    end
+
+    function ConfigSystem:Load(configName)
+        if not readfile or not isfile then
+            AbsoluteLib:Notify({ Title = "Erro", Content = "O seu executor não suporta leitura de arquivos.", Duration = 3 })
+            return false
+        end
+
+        local filePath = self.FolderName .. "/" .. configName .. ".json"
+        if not isfile(filePath) then
+            AbsoluteLib:Notify({ Title = "Erro", Content = "Arquivo de configuração não encontrado.", Duration = 2.5 })
+            return false
+        end
+
+        local success, err = pcall(function()
+            local decodedData = HttpService:JSONDecode(readfile(filePath))
+            for id, value in pairs(decodedData) do
+                if self.RegisteredElements[id] then
+                    self.RegisteredElements[id].Set(value)
+                end
+            end
+        end)
+
+        if success then
+            AbsoluteLib:Notify({ Title = "Configurações", Content = "Perfil '" .. configName .. "' carregado com sucesso!", Duration = 2.5 })
+            return true
+        else
+            warn("[AbsoluteLib] Erro ao carregar config: " .. tostring(err))
+            return false
+        end
+    end
+
+    windowObj.ConfigSystem = ConfigSystem
+    return ConfigSystem
+end
+
+--------------------------------------------------------------------------------
+-- CREATOR DA JANELA PRINCIPAL
+--------------------------------------------------------------------------------
+function AbsoluteLib:CreateWindow(config)
     config = config or {}
-    local TitleText = config.Title or "AETHERIA"
+    local TitleText = config.Title or "ABSOLUTE"
     local SubTitleText = config.SubTitle or "UI Dashboard"
     local AccentColor = config.AccentColor or Color3.fromRGB(0, 170, 255)
     local EnableARGB = config.ARGBBorders ~= false
     local GradientSpeed = config.GradientSpeed or 3
+    local ToggleKey = config.ToggleKey or Enum.KeyCode.RightControl
 
-    -- ScreenGui Principal
     local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "AetheriaLib_UI"
+    ScreenGui.Name = "AbsoluteLib_UI"
     ScreenGui.ResetOnSpawn = false
     
     pcall(function() ScreenGui.Parent = CoreGui end)
-    if not ScreenGui.Parent then ScreenGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+    if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-    -- Main Frame
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 650, 0, 420)
@@ -146,7 +221,6 @@ function AetheriaLib:CreateWindow(config)
     MainCorner.CornerRadius = UDim.new(0, 8)
     MainCorner.Parent = MainFrame
 
-    -- Borda Neon / ARGB Dinâmica
     local UIStroke = Instance.new("UIStroke")
     UIStroke.Thickness = 1.5
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
@@ -161,7 +235,6 @@ function AetheriaLib:CreateWindow(config)
             ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 0, 128))
         })
         
-        -- Loop do Gradiente Neon
         local rotConnection
         rotConnection = RunService.RenderStepped:Connect(function(dt)
             if not MainFrame or not MainFrame.Parent then
@@ -175,8 +248,8 @@ function AetheriaLib:CreateWindow(config)
     end
     UIGradient.Parent = UIStroke
 
-    -- Sistema de Arraste (Draggable)
-    local dragging, dragInput, dragStart, startPos
+    -- Sistema de Arrastar (Drag)
+    local dragging, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
@@ -185,9 +258,7 @@ function AetheriaLib:CreateWindow(config)
         end
     end)
     MainFrame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
@@ -196,7 +267,45 @@ function AetheriaLib:CreateWindow(config)
         end
     end)
 
-    -- Painel Esquerdo (Sidebar)
+    -- Toggle de Visibilidade por Tecla
+    local IsVisible = true
+    local IsAnimating = false
+
+    local function SetUIVisibility(visible)
+        if IsAnimating then return end
+        IsAnimating = true
+        IsVisible = visible
+
+        if IsVisible then
+            MainFrame.Visible = true
+            MainFrame.Size = UDim2.new(0, 620, 0, 400)
+            MainFrame.Position = UDim2.new(0.5, -310, 0.5, -200)
+            local tween = Tween(MainFrame, {0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {
+                Size = UDim2.new(0, 650, 0, 420),
+                Position = UDim2.new(0.5, -325, 0.5, -210)
+            })
+            tween.Completed:Connect(function() IsAnimating = false end)
+        else
+            local tween = Tween(MainFrame, {0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In}, {
+                Size = UDim2.new(0, 620, 0, 400),
+                Position = UDim2.new(0.5, -310, 0.5, -200)
+            })
+            tween.Completed:Connect(function()
+                MainFrame.Visible = false
+                IsAnimating = false
+            end)
+        end
+    end
+
+    UserInputService.InputBegan:Connect(function(input, gameProcessed)
+        if not gameProcessed and input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode == ToggleKey then
+                SetUIVisibility(not IsVisible)
+            end
+        end
+    end)
+
+    -- Barra Lateral (Sidebar)
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 170, 1, 0)
@@ -244,7 +353,6 @@ function AetheriaLib:CreateWindow(config)
     TabListLayout.Padding = UDim.new(0, 4)
     TabListLayout.Parent = TabHolder
 
-    -- Contêiner do Conteúdo (Abas)
     local ContentContainer = Instance.new("Frame")
     ContentContainer.Name = "ContentContainer"
     ContentContainer.Size = UDim2.new(1, -170, 1, 0)
@@ -259,17 +367,18 @@ function AetheriaLib:CreateWindow(config)
         TabHolder = TabHolder,
         AccentColor = AccentColor,
         Tabs = {},
-        ActiveTab = nil
+        ActiveTab = nil,
+        SetToggleKey = function(self, newKey) ToggleKey = newKey end,
+        ToggleUI = function(self) SetUIVisibility(not IsVisible) end
     }
 
-    ----------------------------------------------------------------------------
-    -- MÉTODOS DA JANELA (CreateTab)
-    ----------------------------------------------------------------------------
+    ------------------------------------------------------------------------
+    -- CRIADOR DE ABAS (CreateTab)
+    ------------------------------------------------------------------------
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local TabName = tabConfig.Name or "Aba"
 
-        -- Botão da Aba na Sidebar
         local TabButton = Instance.new("TextButton")
         TabButton.Size = UDim2.new(1, -16, 0, 32)
         TabButton.Position = UDim2.new(0, 8, 0, 0)
@@ -305,7 +414,6 @@ function AetheriaLib:CreateWindow(config)
         TabLabel.BackgroundTransparency = 1
         TabLabel.Parent = TabButton
 
-        -- Frame da Página
         local TabPage = Instance.new("ScrollingFrame")
         TabPage.Name = "Page_" .. TabName
         TabPage.Size = UDim2.new(1, 0, 1, 0)
@@ -327,12 +435,8 @@ function AetheriaLib:CreateWindow(config)
         PageLayout.Padding = UDim.new(0, 12)
         PageLayout.Parent = TabPage
 
-        local TabObj = {
-            Page = TabPage,
-            Button = TabButton
-        }
+        local TabObj = { Page = TabPage, Button = TabButton }
 
-        -- Função para Selecionar Aba
         local function Select()
             for _, t in pairs(WindowObj.Tabs) do
                 t.Page.Visible = false
@@ -349,25 +453,18 @@ function AetheriaLib:CreateWindow(config)
         end
 
         TabButton.MouseButton1Click:Connect(Select)
-
-        -- Micro-interações de Hover
         TabButton.MouseEnter:Connect(function()
-            if WindowObj.ActiveTab ~= TabObj then
-                Tween(TabLabel, {0.2, Enum.EasingStyle.Quart}, {TextColor3 = Color3.fromRGB(210, 215, 230)})
-            end
+            if WindowObj.ActiveTab ~= TabObj then Tween(TabLabel, {0.2, Enum.EasingStyle.Quart}, {TextColor3 = Color3.fromRGB(210, 215, 230)}) end
         end)
-
         TabButton.MouseLeave:Connect(function()
-            if WindowObj.ActiveTab ~= TabObj then
-                Tween(TabLabel, {0.2, Enum.EasingStyle.Quart}, {TextColor3 = Color3.fromRGB(150, 155, 170)})
-            end
+            if WindowObj.ActiveTab ~= TabObj then Tween(TabLabel, {0.2, Enum.EasingStyle.Quart}, {TextColor3 = Color3.fromRGB(150, 155, 170)}) end
         end)
 
         table.insert(WindowObj.Tabs, TabObj)
         if #WindowObj.Tabs == 1 then Select() end
 
         ------------------------------------------------------------------------
-        -- SUBSEÇÕES (CreateSection)
+        -- CRIADOR DE SEÇÕES (CreateSection)
         ------------------------------------------------------------------------
         function TabObj:CreateSection(secConfig)
             secConfig = secConfig or {}
@@ -405,16 +502,13 @@ function AetheriaLib:CreateWindow(config)
             Title.BackgroundTransparency = 1
             Title.Parent = SectionFrame
 
-            -- Atualiza altura da Seção automaticamente
             SecLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
                 SectionFrame.Size = UDim2.new(1, 0, 0, SecLayout.AbsoluteContentSize.Y + 16)
             end)
 
             local SectionObj = {}
 
-            --------------------------------------------------------------------
-            -- ELEMENTO: BUTTON
-            --------------------------------------------------------------------
+            -- COMPONENTE: BUTTON
             function SectionObj:CreateButton(btnConfig)
                 btnConfig = btnConfig or {}
                 local Name = btnConfig.Name or "Botão"
@@ -461,30 +555,24 @@ function AetheriaLib:CreateWindow(config)
                     InfoLabel.Parent = Button
                 end
 
-                -- Micro-interações
                 Button.MouseEnter:Connect(function()
                     Tween(Button, {0.15, Enum.EasingStyle.Quart}, {BackgroundColor3 = Color3.fromRGB(34, 38, 52)})
                     Tween(BtnStroke, {0.15, Enum.EasingStyle.Quart}, {Color = AccentColor})
                 end)
-
                 Button.MouseLeave:Connect(function()
                     Tween(Button, {0.15, Enum.EasingStyle.Quart}, {BackgroundColor3 = Color3.fromRGB(26, 29, 40)})
                     Tween(BtnStroke, {0.15, Enum.EasingStyle.Quart}, {Color = Color3.fromRGB(40, 45, 60)})
                 end)
-
                 Button.MouseButton1Down:Connect(function()
                     Tween(Button, {0.1, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, -4, 0, (Info and 38 or 30) - 2)})
                 end)
-
                 Button.MouseButton1Up:Connect(function()
                     Tween(Button, {0.1, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, 0, 0, Info and 38 or 30)})
                     task.spawn(Callback)
                 end)
             end
 
-            --------------------------------------------------------------------
-            -- ELEMENTO: TOGGLE
-            --------------------------------------------------------------------
+            -- COMPONENTE: TOGGLE
             function SectionObj:CreateToggle(tglConfig)
                 tglConfig = tglConfig or {}
                 local Name = tglConfig.Name or "Toggle"
@@ -547,11 +635,11 @@ function AetheriaLib:CreateWindow(config)
                 ClickBtn.MouseButton1Click:Connect(function()
                     SetState(not State)
                 end)
+
+                return { Set = SetState, Get = function() return State end }
             end
 
-            --------------------------------------------------------------------
-            -- ELEMENTO: SLIDER
-            --------------------------------------------------------------------
+            -- COMPONENTE: SLIDER
             function SectionObj:CreateSlider(sldConfig)
                 sldConfig = sldConfig or {}
                 local Name = sldConfig.Name or "Slider"
@@ -612,13 +700,17 @@ function AetheriaLib:CreateWindow(config)
 
                 local draggingSld = false
 
-                local function UpdateSlider(input)
-                    local pos = math.clamp((input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
-                    local calculatedVal = math.floor(Min + ((Max - Min) * pos))
-                    Value = calculatedVal
+                local function SetValue(val)
+                    Value = math.clamp(val, Min, Max)
                     ValLabel.Text = tostring(Value)
+                    local pos = (Value - Min) / (Max - Min)
                     Tween(Fill, {0.05, Enum.EasingStyle.Linear}, {Size = UDim2.new(pos, 0, 1, 0)})
                     task.spawn(Callback, Value)
+                end
+
+                local function UpdateSlider(input)
+                    local pos = math.clamp((input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X, 0, 1)
+                    SetValue(math.floor(Min + ((Max - Min) * pos)))
                 end
 
                 Track.InputBegan:Connect(function(input)
@@ -629,16 +721,285 @@ function AetheriaLib:CreateWindow(config)
                 end)
 
                 Track.InputEnded:Connect(function(input)
-                    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                        draggingSld = false
-                    end
+                    if input.UserInputType == Enum.UserInputType.MouseButton1 then draggingSld = false end
                 end)
 
                 UserInputService.InputChanged:Connect(function(input)
-                    if draggingSld and input.UserInputType == Enum.UserInputType.MouseMovement then
-                        UpdateSlider(input)
+                    if draggingSld and input.UserInputType == Enum.UserInputType.MouseMovement then UpdateSlider(input) end
+                end)
+
+                return { Set = SetValue, Get = function() return Value end }
+            end
+
+            -- COMPONENTE: DROPDOWN
+            function SectionObj:CreateDropdown(drpConfig)
+                drpConfig = drpConfig or {}
+                local Name = drpConfig.Name or "Dropdown"
+                local Options = drpConfig.Options or {}
+                local Default = drpConfig.Default or Options[1] or "Nenhum"
+                local Callback = drpConfig.Callback or function() end
+
+                local Selected = Default
+                local Expanded = false
+
+                local DropdownContainer = Instance.new("Frame")
+                DropdownContainer.Size = UDim2.new(1, 0, 0, 42)
+                DropdownContainer.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+                DropdownContainer.ClipsDescendants = true
+                DropdownContainer.Parent = SectionFrame
+
+                local DrpCorner = Instance.new("UICorner")
+                DrpCorner.CornerRadius = UDim.new(0, 6)
+                DrpCorner.Parent = DropdownContainer
+
+                local Header = Instance.new("TextButton")
+                Header.Size = UDim2.new(1, 0, 0, 42)
+                Header.BackgroundTransparency = 1
+                Header.Text = ""
+                Header.Parent = DropdownContainer
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = Name
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+                Label.Size = UDim2.new(0.5, 0, 0, 15)
+                Label.Position = UDim2.new(0, 10, 0, 6)
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.BackgroundTransparency = 1
+                Label.Parent = Header
+
+                local SelectedLabel = Instance.new("TextLabel")
+                SelectedLabel.Text = Selected
+                SelectedLabel.Font = Enum.Font.Gotham
+                SelectedLabel.TextSize = 11
+                SelectedLabel.TextColor3 = AccentColor
+                SelectedLabel.Size = UDim2.new(0.4, 0, 0, 15)
+                SelectedLabel.Position = UDim2.new(0.6, -25, 0, 6)
+                SelectedLabel.TextXAlignment = Enum.TextXAlignment.Right
+                SelectedLabel.BackgroundTransparency = 1
+                SelectedLabel.Parent = Header
+
+                local Arrow = Instance.new("TextLabel")
+                Arrow.Text = "▼"
+                Arrow.Font = Enum.Font.GothamBold
+                Arrow.TextSize = 9
+                Arrow.TextColor3 = Color3.fromRGB(150, 155, 170)
+                Arrow.Size = UDim2.new(0, 15, 0, 15)
+                Arrow.Position = UDim2.new(1, -20, 0, 6)
+                Arrow.BackgroundTransparency = 1
+                Arrow.Parent = Header
+
+                local OptionHolder = Instance.new("ScrollingFrame")
+                OptionHolder.Size = UDim2.new(1, -20, 0, 0)
+                OptionHolder.Position = UDim2.new(0, 10, 0, 28)
+                OptionHolder.BackgroundTransparency = 1
+                OptionHolder.ScrollBarThickness = 2
+                OptionHolder.ScrollBarImageColor3 = AccentColor
+                OptionHolder.Parent = DropdownContainer
+
+                local OptionLayout = Instance.new("UIListLayout")
+                OptionLayout.SortOrder = Enum.SortOrder.LayoutOrder
+                OptionLayout.Padding = UDim.new(0, 4)
+                OptionLayout.Parent = OptionHolder
+
+                local function ToggleDropdown()
+                    Expanded = not Expanded
+                    local targetListHeight = math.min(#Options * 24, 100)
+                    local targetTotalHeight = Expanded and (32 + targetListHeight) or 42
+
+                    OptionHolder.Size = UDim2.new(1, -20, 0, Expanded and targetListHeight or 0)
+                    Tween(Arrow, {0.2, Enum.EasingStyle.Quart}, {Rotation = Expanded and 180 or 0})
+                    Tween(DropdownContainer, {0.2, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, 0, 0, targetTotalHeight)})
+                end
+
+                Header.MouseButton1Click:Connect(ToggleDropdown)
+
+                local function PopulateOptions()
+                    for _, child in pairs(OptionHolder:GetChildren()) do
+                        if child:IsA("TextButton") then child:Destroy() end
+                    end
+
+                    for _, opt in ipairs(Options) do
+                        local OptBtn = Instance.new("TextButton")
+                        OptBtn.Size = UDim2.new(1, -6, 0, 20)
+                        OptBtn.BackgroundColor3 = Color3.fromRGB(34, 38, 52)
+                        OptBtn.Text = opt
+                        OptBtn.Font = Enum.Font.Gotham
+                        OptBtn.TextSize = 11
+                        OptBtn.TextColor3 = opt == Selected and AccentColor or Color3.fromRGB(200, 205, 220)
+                        OptBtn.Parent = OptionHolder
+
+                        local OptCorner = Instance.new("UICorner")
+                        OptCorner.CornerRadius = UDim.new(0, 4)
+                        OptCorner.Parent = OptBtn
+
+                        OptBtn.MouseButton1Click:Connect(function()
+                            Selected = opt
+                            SelectedLabel.Text = Selected
+                            PopulateOptions()
+                            ToggleDropdown()
+                            task.spawn(Callback, Selected)
+                        end)
+                    end
+                    OptionHolder.CanvasSize = UDim2.new(0, 0, 0, OptionLayout.AbsoluteContentSize.Y)
+                end
+
+                PopulateOptions()
+
+                return {
+                    Set = function(val)
+                        Selected = val
+                        SelectedLabel.Text = Selected
+                        PopulateOptions()
+                        task.spawn(Callback, Selected)
+                    end,
+                    Get = function() return Selected end
+                }
+            end
+
+            -- COMPONENTE: KEYBIND
+            function SectionObj:CreateKeybind(kbConfig)
+                kbConfig = kbConfig or {}
+                local Name = kbConfig.Name or "Keybind"
+                local Default = kbConfig.Default or Enum.KeyCode.E
+                local Callback = kbConfig.Callback or function() end
+
+                local CurrentKey = Default
+                local Binding = false
+
+                local KeybindFrame = Instance.new("Frame")
+                KeybindFrame.Size = UDim2.new(1, 0, 0, 32)
+                KeybindFrame.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+                KeybindFrame.Parent = SectionFrame
+
+                local KbCorner = Instance.new("UICorner")
+                KbCorner.CornerRadius = UDim.new(0, 6)
+                KbCorner.Parent = KeybindFrame
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = Name
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+                Label.Size = UDim2.new(0.6, 0, 1, 0)
+                Label.Position = UDim2.new(0, 10, 0, 0)
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.BackgroundTransparency = 1
+                Label.Parent = KeybindFrame
+
+                local KeyBtn = Instance.new("TextButton")
+                KeyBtn.Size = UDim2.new(0, 70, 0, 20)
+                KeyBtn.Position = UDim2.new(1, -80, 0.5, -10)
+                KeyBtn.BackgroundColor3 = Color3.fromRGB(36, 40, 56)
+                KeyBtn.Text = CurrentKey.Name
+                KeyBtn.Font = Enum.Font.GothamBold
+                KeyBtn.TextSize = 10
+                KeyBtn.TextColor3 = AccentColor
+                KeyBtn.Parent = KeybindFrame
+
+                local KeyBtnCorner = Instance.new("UICorner")
+                KeyBtnCorner.CornerRadius = UDim.new(0, 4)
+                KeyBtnCorner.Parent = KeyBtn
+
+                KeyBtn.MouseButton1Click:Connect(function()
+                    Binding = true
+                    KeyBtn.Text = "..."
+                    KeyBtn.TextColor3 = Color3.fromRGB(255, 200, 0)
+                end)
+
+                UserInputService.InputBegan:Connect(function(input, gpe)
+                    if Binding and input.UserInputType == Enum.UserInputType.Keyboard then
+                        CurrentKey = input.KeyCode
+                        Binding = false
+                        KeyBtn.Text = CurrentKey.Name
+                        KeyBtn.TextColor3 = AccentColor
+                        task.spawn(Callback, CurrentKey)
+                    elseif not gpe and input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == CurrentKey then
+                        task.spawn(Callback, CurrentKey)
                     end
                 end)
+
+                return {
+                    Set = function(keyEnum)
+                        CurrentKey = keyEnum
+                        KeyBtn.Text = CurrentKey.Name
+                    end,
+                    Get = function() return CurrentKey.Name end
+                }
+            end
+
+            -- COMPONENTE: TEXTBOX
+            function SectionObj:CreateTextBox(txtConfig)
+                txtConfig = txtConfig or {}
+                local Name = txtConfig.Name or "TextBox"
+                local Placeholder = txtConfig.Placeholder or "Digite aqui..."
+                local Callback = txtConfig.Callback or function() end
+
+                local BoxFrame = Instance.new("Frame")
+                BoxFrame.Size = UDim2.new(1, 0, 0, 36)
+                BoxFrame.BackgroundColor3 = Color3.fromRGB(26, 29, 40)
+                BoxFrame.Parent = SectionFrame
+
+                local BoxCorner = Instance.new("UICorner")
+                BoxCorner.CornerRadius = UDim.new(0, 6)
+                BoxCorner.Parent = BoxFrame
+
+                local Label = Instance.new("TextLabel")
+                Label.Text = Name
+                Label.Font = Enum.Font.GothamMedium
+                Label.TextSize = 12
+                Label.TextColor3 = Color3.fromRGB(230, 235, 245)
+                Label.Size = UDim2.new(0.4, 0, 1, 0)
+                Label.Position = UDim2.new(0, 10, 0, 0)
+                Label.TextXAlignment = Enum.TextXAlignment.Left
+                Label.BackgroundTransparency = 1
+                Label.Parent = BoxFrame
+
+                local InputContainer = Instance.new("Frame")
+                InputContainer.Size = UDim2.new(0.55, 0, 0, 22)
+                InputContainer.Position = UDim2.new(0.45, -10, 0.5, -11)
+                InputContainer.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
+                InputContainer.Parent = BoxFrame
+
+                local InputCorner = Instance.new("UICorner")
+                InputCorner.CornerRadius = UDim.new(0, 4)
+                InputCorner.Parent = InputContainer
+
+                local InputStroke = Instance.new("UIStroke")
+                InputStroke.Color = Color3.fromRGB(40, 45, 60)
+                InputStroke.Thickness = 1
+                InputStroke.Parent = InputContainer
+
+                local TextBox = Instance.new("TextBox")
+                TextBox.Size = UDim2.new(1, -10, 1, 0)
+                TextBox.Position = UDim2.new(0, 5, 0, 0)
+                TextBox.BackgroundTransparency = 1
+                TextBox.Text = ""
+                TextBox.PlaceholderText = Placeholder
+                TextBox.Font = Enum.Font.Gotham
+                TextBox.TextSize = 11
+                TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+                TextBox.PlaceholderColor3 = Color3.fromRGB(100, 105, 120)
+                TextBox.TextXAlignment = Enum.TextXAlignment.Left
+                TextBox.ClearTextOnFocus = false
+                TextBox.Parent = InputContainer
+
+                TextBox.Focused:Connect(function()
+                    Tween(InputStroke, {0.15, Enum.EasingStyle.Quart}, {Color = AccentColor})
+                end)
+
+                TextBox.FocusLost:Connect(function(enterPressed)
+                    Tween(InputStroke, {0.15, Enum.EasingStyle.Quart}, {Color = Color3.fromRGB(40, 45, 60)})
+                    task.spawn(Callback, TextBox.Text, enterPressed)
+                end)
+
+                return {
+                    Set = function(str)
+                        TextBox.Text = str
+                    end,
+                    Get = function() return TextBox.Text end
+                }
             end
 
             return SectionObj
@@ -650,4 +1011,4 @@ function AetheriaLib:CreateWindow(config)
     return WindowObj
 end
 
-return AetheriaLib
+return AbsoluteLib
