@@ -1,5 +1,5 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - Tags & Precision Sweep Update)
+    ABSOLUTE UI LIBRARY v2 (Clean Glass Edition - Fixed Edition)
     Design: Dark Glassmorphism, Dynamic Neon Borders & Status Badges System
 ]]
 
@@ -36,41 +36,6 @@ local function AddCorner(parent, radius)
     corner.CornerRadius = UDim.new(0, radius or 8)
     corner.Parent = parent
     return corner
-end
-
--- EFEITO VISUAL: Brilho Neon Passante Ajustado ao Botão
-local function AddGlowSweepEffect(element, primaryColor)
-    element.ClipsDescendants = true
-
-    local sweepFrame = Instance.new("Frame")
-    sweepFrame.Name = "GlowSweep"
-    sweepFrame.Size = UDim2.new(0, 40, 2, 0)
-    sweepFrame.Position = UDim2.new(-0.8, 0, -0.5, 0)
-    sweepFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    sweepFrame.BackgroundTransparency = 0.7
-    sweepFrame.Rotation = 20
-    sweepFrame.BorderSizePixel = 0
-    sweepFrame.Parent = element
-
-    local gradient = Instance.new("UIGradient")
-    gradient.Color = ColorSequence.new{
-        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-        ColorSequenceKeypoint.new(0.5, primaryColor or Color3.fromRGB(0, 191, 255)),
-        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
-    }
-    gradient.Transparency = NumberSequence.new{
-        NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(0.5, 0.1),
-        NumberSequenceKeypoint.new(1, 1)
-    }
-    gradient.Parent = sweepFrame
-
-    element.MouseEnter:Connect(function()
-        sweepFrame.Position = UDim2.new(-0.8, 0, -0.5, 0)
-        Tween(sweepFrame, {0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {
-            Position = UDim2.new(1.8, 0, -0.5, 0)
-        })
-    end)
 end
 
 -- Auxiliar para Criar Badges/Tags
@@ -303,7 +268,7 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
-    -- Efeito Borda Neon Externa
+    -- Efeito Borda Neon Externa da Janela
     local HubGlowFrame = Instance.new("Frame")
     HubGlowFrame.Name = "HubGlowFrame"
     HubGlowFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -327,7 +292,7 @@ function AbsoluteLib:CreateWindow(config)
     }
     HubGradient.Parent = HubStroke
 
-    -- Gerenciamento de Animação Neon Global
+    -- Gerenciamento de Animação Neon da Borda Externa
     local AnimatedGradients = { HubGradient }
     local RotConnection = RunService.RenderStepped:Connect(function(dt)
         if not MainFrame or not MainFrame.Parent then return end
@@ -339,46 +304,16 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Auxiliar de Brilho em Botões
+    -- Hover Padrão sem Efeito de Parallax / Sweep
     local function CreateButtonGlow(button)
-        AddGlowSweepEffect(button, PrimaryColor)
-
-        local glowBorder = Instance.new("Frame")
-        glowBorder.Size = UDim2.new(1, 6, 1, 6)
-        glowBorder.Position = UDim2.new(0, -3, 0, -3)
-        glowBorder.BackgroundTransparency = 1
-        glowBorder.ZIndex = button.ZIndex - 1
-        glowBorder.Visible = false
-        glowBorder.Parent = button
-        AddCorner(glowBorder, 10)
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = NeonWhite
-        stroke.Thickness = 1.5
-        stroke.Transparency = 0.4
-        stroke.Parent = glowBorder
-
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, NeonWhite),
-            ColorSequenceKeypoint.new(0.5, PrimaryColor),
-            ColorSequenceKeypoint.new(1, NeonWhite)
-        }
-        gradient.Parent = stroke
-        table.insert(AnimatedGradients, gradient)
+        local baseColor = button.BackgroundColor3
 
         button.MouseEnter:Connect(function()
-            glowBorder.Visible = true
             Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = HoverColor})
-            Tween(stroke, {0.2, Enum.EasingStyle.Quad}, {Transparency = 0.1})
         end)
 
         button.MouseLeave:Connect(function()
-            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = Color3.fromRGB(24, 26, 38)})
-            Tween(stroke, {0.3, Enum.EasingStyle.Quad}, {Transparency = 0.7})
-            task.delay(0.2, function()
-                if glowBorder then glowBorder.Visible = false end
-            end)
+            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = baseColor})
         end)
     end
 
@@ -739,7 +674,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -140, 1, 0)
@@ -836,7 +770,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -180, 0, 20)
@@ -932,7 +865,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 0, 44)
@@ -1022,7 +954,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 1, 0)
@@ -1075,7 +1006,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -200, 1, 0)
