@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition)
-    Design: Dark Glassmorphism, Dynamic Neon Borders & Horizontal Cards Grid
+    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - Full Complete Version)
+    Design: Dark Glassmorphism, Dynamic Neon Borders, Horizontal Cards Grid & Complete Component Set
 ]]
 
 local AbsoluteLib = {}
@@ -223,7 +223,7 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
-    -- Efeito Borda Neon Externa Gire
+    -- Efeito Borda Neon Externa
     local HubGlowFrame = Instance.new("Frame")
     HubGlowFrame.Name = "HubGlowFrame"
     HubGlowFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -259,7 +259,7 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Auxiliar de Brilho em Botões Neon
+    -- Auxiliar de Brilho em Botões
     local function CreateButtonGlow(button)
         local glowBorder = Instance.new("Frame")
         glowBorder.Size = UDim2.new(1, 6, 1, 6)
@@ -584,6 +584,23 @@ function AbsoluteLib:CreateWindow(config)
             return card
         end
 
+        -- COMPONENTE: SEÇÃO (LABEL)
+        function TabObj:CreateSection(secConfig)
+            local titleText = type(secConfig) == "string" and secConfig or (secConfig.Name or "Seção")
+            
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -15, 0, 25)
+            Label.BackgroundTransparency = 1
+            Label.Text = titleText
+            Label.TextColor3 = PrimaryColor
+            Label.TextSize = 14
+            Label.Font = Enum.Font.GothamBold
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = TabPage
+
+            return Label
+        end
+
         -- COMPONENTE: TOGGLE
         function TabObj:CreateToggle(tglConfig)
             tglConfig = tglConfig or {}
@@ -658,6 +675,233 @@ function AbsoluteLib:CreateWindow(config)
 
             table.insert(TabObj.SearchItems, { Name = Name, Instance = Btn })
             return Btn
+        end
+
+        -- COMPONENTE: SLIDER
+        function TabObj:CreateSlider(sliderConfig)
+            sliderConfig = sliderConfig or {}
+            local Name = sliderConfig.Name or "Slider"
+            local Min = sliderConfig.Min or 0
+            local Max = sliderConfig.Max or 100
+            local Default = sliderConfig.Default or Min
+            local Callback = sliderConfig.Callback or function() end
+
+            local Value = math.clamp(Default, Min, Max)
+
+            local Frame = Instance.new("Frame")
+            Frame.Size = UDim2.new(1, -15, 0, 50)
+            Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.Parent = TabPage
+            AddCorner(Frame, 8)
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -100, 0, 20)
+            Label.Position = UDim2.new(0, 15, 0, 8)
+            Label.BackgroundTransparency = 1
+            Label.Text = Name
+            Label.TextColor3 = Color3.fromRGB(235, 235, 240)
+            Label.TextSize = 13
+            Label.Font = Enum.Font.GothamSemibold
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = Frame
+
+            local ValueLabel = Instance.new("TextLabel")
+            ValueLabel.Size = UDim2.new(0, 80, 0, 20)
+            ValueLabel.Position = UDim2.new(1, -95, 0, 8)
+            ValueLabel.BackgroundTransparency = 1
+            ValueLabel.Text = tostring(Value)
+            ValueLabel.TextColor3 = Color3.fromRGB(160, 160, 175)
+            ValueLabel.TextSize = 12
+            ValueLabel.Font = Enum.Font.Gotham
+            ValueLabel.TextXAlignment = Enum.TextXAlignment.Right
+            ValueLabel.Parent = Frame
+
+            local SliderTrack = Instance.new("TextButton")
+            SliderTrack.Size = UDim2.new(1, -30, 0, 6)
+            SliderTrack.Position = UDim2.new(0, 15, 0, 34)
+            SliderTrack.BackgroundColor3 = Color3.fromRGB(35, 36, 48)
+            SliderTrack.Text = ""
+            SliderTrack.Parent = Frame
+            AddCorner(SliderTrack, 3)
+
+            local SliderFill = Instance.new("Frame")
+            SliderFill.Size = UDim2.new((Value - Min) / (Max - Min), 0, 1, 0)
+            SliderFill.BackgroundColor3 = PrimaryColor
+            SliderFill.Parent = SliderTrack
+            AddCorner(SliderFill, 3)
+
+            local function UpdateSlider(input)
+                local percent = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
+                Value = math.floor(Min + (Max - Min) * percent)
+                ValueLabel.Text = tostring(Value)
+                SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                task.spawn(Callback, Value)
+            end
+
+            local isDragging = false
+            SliderTrack.InputBegan:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    isDragging = true
+                    UpdateSlider(input)
+                end
+            end)
+
+            UserInputService.InputChanged:Connect(function(input)
+                if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                    UpdateSlider(input)
+                end
+            end)
+
+            UserInputService.InputEnded:Connect(function(input)
+                if input.UserInputType == Enum.UserInputType.MouseButton1 then
+                    isDragging = false
+                end
+            end)
+
+            local function SetValue(newVal)
+                Value = math.clamp(newVal, Min, Max)
+                local percent = (Value - Min) / (Max - Min)
+                ValueLabel.Text = tostring(Value)
+                SliderFill.Size = UDim2.new(percent, 0, 1, 0)
+                task.spawn(Callback, Value)
+            end
+
+            table.insert(TabObj.SearchItems, { Name = Name, Instance = Frame })
+            return { Set = SetValue, Get = function() return Value end }
+        end
+
+        -- COMPONENTE: DROPDOWN
+        function TabObj:CreateDropdown(dropConfig)
+            dropConfig = dropConfig or {}
+            local Name = dropConfig.Name or "Dropdown"
+            local Options = dropConfig.Options or {}
+            local CurrentOption = dropConfig.Default or Options[1] or ""
+            local Callback = dropConfig.Callback or function() end
+
+            local Frame = Instance.new("Frame")
+            Frame.Size = UDim2.new(1, -15, 0, 44)
+            Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.ClipsDescendants = true
+            Frame.Parent = TabPage
+            AddCorner(Frame, 8)
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -150, 0, 44)
+            Label.Position = UDim2.new(0, 15, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Text = Name
+            Label.TextColor3 = Color3.fromRGB(235, 235, 240)
+            Label.TextSize = 13
+            Label.Font = Enum.Font.GothamSemibold
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = Frame
+
+            local DropButton = Instance.new("TextButton")
+            DropButton.Size = UDim2.new(0, 130, 0, 28)
+            DropButton.Position = UDim2.new(1, -140, 0, 8)
+            DropButton.BackgroundColor3 = Color3.fromRGB(28, 30, 42)
+            DropButton.Text = tostring(CurrentOption) .. "  ▼"
+            DropButton.TextColor3 = NeonWhite
+            DropButton.TextSize = 11
+            DropButton.Font = Enum.Font.Gotham
+            DropButton.Parent = Frame
+            AddCorner(DropButton, 6)
+
+            local OptionsContainer = Instance.new("Frame")
+            OptionsContainer.Size = UDim2.new(1, -30, 0, 0)
+            OptionsContainer.Position = UDim2.new(0, 15, 0, 48)
+            OptionsContainer.BackgroundTransparency = 1
+            OptionsContainer.Parent = Frame
+
+            local OptLayout = Instance.new("UIListLayout")
+            OptLayout.Padding = UDim.new(0, 4)
+            OptLayout.Parent = OptionsContainer
+
+            local isOpen = false
+            local function ToggleDrop()
+                isOpen = not isOpen
+                local targetHeight = isOpen and (50 + #Options * 28) or 44
+                Tween(Frame, {0.25, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, -15, 0, targetHeight)})
+            end
+
+            local function SelectOption(opt)
+                CurrentOption = opt
+                DropButton.Text = tostring(opt) .. "  ▼"
+                ToggleDrop()
+                task.spawn(Callback, CurrentOption)
+            end
+
+            for _, opt in ipairs(Options) do
+                local OptBtn = Instance.new("TextButton")
+                OptBtn.Size = UDim2.new(1, 0, 0, 24)
+                OptBtn.BackgroundColor3 = Color3.fromRGB(24, 25, 35)
+                OptBtn.Text = tostring(opt)
+                OptBtn.TextColor3 = Color3.fromRGB(200, 200, 215)
+                OptBtn.TextSize = 11
+                OptBtn.Font = Enum.Font.Gotham
+                OptBtn.Parent = OptionsContainer
+                AddCorner(OptBtn, 4)
+
+                OptBtn.MouseButton1Click:Connect(function()
+                    SelectOption(opt)
+                end)
+            end
+
+            DropButton.MouseButton1Click:Connect(ToggleDrop)
+
+            table.insert(TabObj.SearchItems, { Name = Name, Instance = Frame })
+            return {
+                Set = function(opt) SelectOption(opt) end,
+                Get = function() return CurrentOption end
+            }
+        end
+
+        -- COMPONENTE: TEXTBOX / INPUT
+        function TabObj:CreateTextBox(inputConfig)
+            inputConfig = inputConfig or {}
+            local Name = inputConfig.Name or "Input"
+            local Placeholder = inputConfig.Placeholder or "Digite aqui..."
+            local Callback = inputConfig.Callback or function() end
+
+            local Frame = Instance.new("Frame")
+            Frame.Size = UDim2.new(1, -15, 0, 44)
+            Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.Parent = TabPage
+            AddCorner(Frame, 8)
+
+            local Label = Instance.new("TextLabel")
+            Label.Size = UDim2.new(1, -160, 1, 0)
+            Label.Position = UDim2.new(0, 15, 0, 0)
+            Label.BackgroundTransparency = 1
+            Label.Text = Name
+            Label.TextColor3 = Color3.fromRGB(235, 235, 240)
+            Label.TextSize = 13
+            Label.Font = Enum.Font.GothamSemibold
+            Label.TextXAlignment = Enum.TextXAlignment.Left
+            Label.Parent = Frame
+
+            local Box = Instance.new("TextBox")
+            Box.Size = UDim2.new(0, 140, 0, 26)
+            Box.Position = UDim2.new(1, -150, 0.5, -13)
+            Box.BackgroundColor3 = Color3.fromRGB(28, 30, 42)
+            Box.PlaceholderText = Placeholder
+            Box.PlaceholderColor3 = Color3.fromRGB(90, 90, 110)
+            Box.Text = ""
+            Box.TextColor3 = NeonWhite
+            Box.TextSize = 12
+            Box.Font = Enum.Font.Gotham
+            Box.Parent = Frame
+            AddCorner(Box, 6)
+
+            Box.FocusLost:Connect(function(enterPressed)
+                task.spawn(Callback, Box.Text, enterPressed)
+            end)
+
+            table.insert(TabObj.SearchItems, { Name = Name, Instance = Frame })
+            return {
+                Set = function(txt) Box.Text = txt end,
+                Get = function() return Box.Text end
+            }
         end
 
         -- COMPONENTE: KEYBIND
