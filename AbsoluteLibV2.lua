@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - Full Complete Version)
-    Design: Dark Glassmorphism, Dynamic Neon Borders, Horizontal Cards Grid & Complete Component Set
+    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - FX & Favorites Update)
+    Design: Dark Glassmorphism, Interactive Mouse Parallax, Glow Sweep FX & Game Favorites System
 ]]
 
 local AbsoluteLib = {}
@@ -15,19 +15,53 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Auxiliar de Animação (Tween)
+-- Auxiliares de Estilização
 local function Tween(instance, info, properties)
     local tween = TweenService:Create(instance, TweenInfo.new(unpack(info)), properties)
     tween:Play()
     return tween
 end
 
--- Auxiliar de Canto Arredondado
 local function AddCorner(parent, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius or 8)
     corner.Parent = parent
     return corner
+end
+
+-- EFEITO VISUAL: Brilho Neon Passante (Sweep) ao passar o mouse
+local function AddGlowSweepEffect(element, primaryColor)
+    element.ClipsDescendants = true
+
+    local sweepFrame = Instance.new("Frame")
+    sweepFrame.Name = "GlowSweep"
+    sweepFrame.Size = UDim2.new(0, 30, 2, 0)
+    sweepFrame.Position = UDim2.new(-0.5, 0, -0.5, 0)
+    sweepFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    sweepFrame.BackgroundTransparency = 0.6
+    sweepFrame.Rotation = 25
+    sweepFrame.BorderSizePixel = 0
+    sweepFrame.Parent = element
+
+    local gradient = Instance.new("UIGradient")
+    gradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.5, primaryColor or Color3.fromRGB(0, 191, 255)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(255, 255, 255))
+    }
+    gradient.Transparency = NumberSequence.new{
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(0.5, 0.2),
+        NumberSequenceKeypoint.new(1, 1)
+    }
+    gradient.Parent = sweepFrame
+
+    element.MouseEnter:Connect(function()
+        sweepFrame.Position = UDim2.new(-0.5, 0, -0.5, 0)
+        Tween(sweepFrame, {0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {
+            Position = UDim2.new(1.5, 0, -0.5, 0)
+        })
+    end)
 end
 
 --------------------------------------------------------------------------------
@@ -205,6 +239,7 @@ function AbsoluteLib:CreateWindow(config)
     local HoverColor = config.HoverColor or Color3.fromRGB(0, 150, 220)
     local NeonWhite = Color3.fromRGB(255, 255, 255)
     local ToggleKey = config.ToggleKey or Enum.KeyCode.LeftControl
+    local ParallaxEnabled = config.Parallax ~= false
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AbsoluteHub"
@@ -213,10 +248,12 @@ function AbsoluteLib:CreateWindow(config)
     pcall(function() ScreenGui.Parent = CoreGui end)
     if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
+    local BasePosition = UDim2.new(0.5, -425, 0.5, -260)
+
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 850, 0, 520)
-    MainFrame.Position = UDim2.new(0.5, -425, 0.5, -260)
+    MainFrame.Position = BasePosition
     MainFrame.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
     MainFrame.BackgroundTransparency = 0.12
     MainFrame.Active = true
@@ -259,8 +296,31 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
+    -- EFEITO MOUSE PARALLAX: Movimentação dinâmica do Hub seguindo o cursor
+    local isDragging = false
+    if ParallaxEnabled then
+        UserInputService.InputChanged:Connect(function(input)
+            if not isDragging and input.UserInputType == Enum.UserInputType.MouseMovement and MainFrame.Visible then
+                local mousePos = UserInputService:GetMouseLocation()
+                local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
+                
+                local deltaX = (mousePos.X - (viewportSize.X / 2)) / (viewportSize.X / 2)
+                local deltaY = (mousePos.Y - (viewportSize.Y / 2)) / (viewportSize.Y / 2)
+
+                local offsetX = deltaX * 12
+                local offsetY = deltaY * 12
+
+                Tween(MainFrame, {0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out}, {
+                    Position = UDim2.new(BasePosition.X.Scale, BasePosition.X.Offset + offsetX, BasePosition.Y.Scale, BasePosition.Y.Offset + offsetY)
+                })
+            end
+        end)
+    end
+
     -- Auxiliar de Brilho em Botões
     local function CreateButtonGlow(button)
+        AddGlowSweepEffect(button, PrimaryColor)
+
         local glowBorder = Instance.new("Frame")
         glowBorder.Size = UDim2.new(1, 6, 1, 6)
         glowBorder.Position = UDim2.new(0, -3, 0, -3)
@@ -301,19 +361,22 @@ function AbsoluteLib:CreateWindow(config)
     end
 
     -- Sistema de Arrastar (Drag)
-    local dragging, dragStart, startPos
+    local dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
+            isDragging = true
             dragStart = input.Position
             startPos = MainFrame.Position
         end
     end)
     MainFrame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            isDragging = false
+            BasePosition = MainFrame.Position
+        end
     end)
     UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
@@ -420,12 +483,15 @@ function AbsoluteLib:CreateWindow(config)
     DisplayViews.BackgroundTransparency = 1
     DisplayViews.Parent = MainContent
 
+    local FavoritesList = {}
+
     local WindowObj = {
         ScreenGui = ScreenGui,
         MainFrame = MainFrame,
         Tabs = {},
         ActiveTab = nil,
         PrimaryColor = PrimaryColor,
+        Favorites = FavoritesList,
         SetToggleKey = function(self, newKey) ToggleKey = newKey end,
         ToggleUI = function(self) SetUIVisibility(not IsVisible) end,
         Destroy = function(self)
@@ -546,10 +612,11 @@ function AbsoluteLib:CreateWindow(config)
         -- COMPONENTES DA ABA
         ------------------------------------------------------------------------
         
-        -- CARD DE JOGO (Grid Horizontal)
+        -- CARD DE JOGO COM SISTEMA DE FAVORITO (Grid Horizontal)
         function TabObj:CreateGameCard(cardConfig)
             cardConfig = cardConfig or {}
             local Name = cardConfig.Name or "Jogo"
+            local GameId = cardConfig.GameId or Name
             local Callback = cardConfig.Callback or function() end
 
             local parentFrame = TabPage:FindFirstChildOfClass("Frame") or TabPage
@@ -564,6 +631,30 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(card, 12)
 
             CreateButtonGlow(card)
+
+            -- Botão de Estrela (Favoritos)
+            local FavBtn = Instance.new("TextButton")
+            FavBtn.Size = UDim2.new(0, 24, 0, 24)
+            FavBtn.Position = UDim2.new(1, -28, 0, 6)
+            FavBtn.BackgroundTransparency = 1
+            FavBtn.Text = FavoritesList[GameId] and "★" or "☆"
+            FavBtn.TextColor3 = FavoritesList[GameId] and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
+            FavBtn.TextSize = 16
+            FavBtn.Font = Enum.Font.GothamBold
+            FavBtn.ZIndex = card.ZIndex + 2
+            FavBtn.Parent = card
+
+            FavBtn.MouseButton1Click:Connect(function()
+                FavoritesList[GameId] = not FavoritesList[GameId]
+                FavBtn.Text = FavoritesList[GameId] and "★" or "☆"
+                FavBtn.TextColor3 = FavoritesList[GameId] and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
+                
+                AbsoluteLib:Notify({
+                    Title = "Favoritos",
+                    Content = FavoritesList[GameId] and (Name .. " adicionado aos favoritos!") or (Name .. " removido dos favoritos."),
+                    Duration = 2
+                })
+            end)
 
             local title = Instance.new("TextLabel")
             title.Size = UDim2.new(1, -16, 0, 50)
@@ -613,6 +704,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -70, 1, 0)
@@ -693,6 +785,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -100, 0, 20)
@@ -738,23 +831,23 @@ function AbsoluteLib:CreateWindow(config)
                 task.spawn(Callback, Value)
             end
 
-            local isDragging = false
+            local isSliderDragging = false
             SliderTrack.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    isDragging = true
+                    isSliderDragging = true
                     UpdateSlider(input)
                 end
             end)
 
             UserInputService.InputChanged:Connect(function(input)
-                if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                if isSliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                     UpdateSlider(input)
                 end
             end)
 
             UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    isDragging = false
+                    isSliderDragging = false
                 end
             end)
 
@@ -784,6 +877,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -150, 0, 44)
@@ -868,6 +962,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -160, 1, 0)
@@ -916,6 +1011,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -130, 1, 0)
