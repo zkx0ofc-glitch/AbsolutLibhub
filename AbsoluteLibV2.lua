@@ -1,5 +1,5 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Neon Gradient Hover Edition)
+    ABSOLUTE UI LIBRARY v2.1 (Clipping Fixed & Neon Hover)
     Design: Dark Glassmorphism, Dynamic Gradient Borders on Hover & Status Badges
 ]]
 
@@ -265,6 +265,7 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
     MainFrame.BackgroundTransparency = 0.12
     MainFrame.Active = true
+    MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
@@ -292,7 +293,7 @@ function AbsoluteLib:CreateWindow(config)
     }
     HubGradient.Parent = HubStroke
 
-    -- Gerenciamento de Animação Neon Global (Gira todos os gradientes do sistema)
+    -- Gerenciamento de Animação Neon Global
     local AnimatedGradients = { HubGradient }
     local RotConnection = RunService.RenderStepped:Connect(function(dt)
         if not MainFrame or not MainFrame.Parent then return end
@@ -304,22 +305,22 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Efeito Borda Gradiente Neon no Hover (Exatamente igual ao Hub)
+    -- Efeito Borda Gradiente Neon no Hover
     local function ApplyGradientHoverEffect(element, cornerRadius)
         local hoverGlowFrame = Instance.new("Frame")
         hoverGlowFrame.Name = "HoverGlow"
-        hoverGlowFrame.Size = UDim2.new(1, 4, 1, 4)
-        hoverGlowFrame.Position = UDim2.new(0, -2, 0, -2)
+        hoverGlowFrame.Size = UDim2.new(1, 2, 1, 2)
+        hoverGlowFrame.Position = UDim2.new(0, -1, 0, -1)
         hoverGlowFrame.BackgroundTransparency = 1
-        hoverGlowFrame.ZIndex = element.ZIndex - 1
+        hoverGlowFrame.ZIndex = element.ZIndex + 1
         hoverGlowFrame.Visible = false
         hoverGlowFrame.Parent = element
-        AddCorner(hoverGlowFrame, (cornerRadius or 8) + 2)
+        AddCorner(hoverGlowFrame, cornerRadius or 8)
 
         local stroke = Instance.new("UIStroke")
         stroke.Color = NeonWhite
         stroke.Thickness = 1.5
-        stroke.Transparency = 0.2
+        stroke.Transparency = 0.1
         stroke.Parent = hoverGlowFrame
 
         local gradient = Instance.new("UIGradient")
@@ -340,7 +341,7 @@ function AbsoluteLib:CreateWindow(config)
         end)
     end
 
-    -- Sistema de Arrastar (Drag Fixo)
+    -- Arrastar Interface (Drag)
     local isDragging, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -423,9 +424,10 @@ function AbsoluteLib:CreateWindow(config)
 
     -- Conteúdo Principal (Lado Direito)
     local MainContent = Instance.new("Frame")
-    MainContent.Size = UDim2.new(1, -240, 1, -40)
-    MainContent.Position = UDim2.new(0, 220, 0, 20)
+    MainContent.Size = UDim2.new(1, -220, 1, -20)
+    MainContent.Position = UDim2.new(0, 210, 0, 10)
     MainContent.BackgroundTransparency = 1
+    MainContent.ClipsDescendants = true
     MainContent.Parent = MainFrame
 
     local SectionTitle = Instance.new("TextLabel")
@@ -439,8 +441,8 @@ function AbsoluteLib:CreateWindow(config)
     SectionTitle.Parent = MainContent
 
     local SearchBox = Instance.new("TextBox")
-    SearchBox.Size = UDim2.new(0, 250, 0, 32)
-    SearchBox.Position = UDim2.new(1, -250, 0, 0)
+    SearchBox.Size = UDim2.new(0, 220, 0, 32)
+    SearchBox.Position = UDim2.new(1, -230, 0, 0)
     SearchBox.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     SearchBox.BackgroundTransparency = 0.4
     SearchBox.PlaceholderText = "Pesquisar..."
@@ -458,9 +460,10 @@ function AbsoluteLib:CreateWindow(config)
     SearchPadding.Parent = SearchBox
 
     local DisplayViews = Instance.new("Frame")
-    DisplayViews.Size = UDim2.new(1, 0, 1, -50)
+    DisplayViews.Size = UDim2.new(1, -10, 1, -50)
     DisplayViews.Position = UDim2.new(0, 0, 0, 50)
     DisplayViews.BackgroundTransparency = 1
+    DisplayViews.ClipsDescendants = true
     DisplayViews.Parent = MainContent
 
     local FavoritesList = {}
@@ -510,37 +513,37 @@ function AbsoluteLib:CreateWindow(config)
         TabPage.Name = "Page_" .. TabName
         TabPage.Visible = false
         TabPage.BackgroundTransparency = 1
+        TabPage.ClipsDescendants = true
         TabPage.Parent = DisplayViews
 
         if IsHorizontalGrid then
-            TabPage.Size = UDim2.new(1, -30, 0, 190)
-            TabPage.Position = UDim2.new(0, 15, 0, 10)
+            TabPage.Size = UDim2.new(1, 0, 1, 0)
+            TabPage.Position = UDim2.new(0, 0, 0, 0)
             TabPage.ScrollBarThickness = 4
             TabPage.ScrollBarImageColor3 = PrimaryColor
             TabPage.ScrollingDirection = Enum.ScrollingDirection.X
-            TabPage.ClipsDescendants = false
 
             local viewPadding = Instance.new("UIPadding")
             viewPadding.PaddingTop = UDim.new(0, 10)
             viewPadding.PaddingBottom = UDim.new(0, 10)
-            viewPadding.PaddingLeft = UDim.new(0, 10)
+            viewPadding.PaddingLeft = UDim.new(0, 5)
             viewPadding.PaddingRight = UDim.new(0, 10)
             viewPadding.Parent = TabPage
 
             local containerFrame = Instance.new("Frame")
-            containerFrame.Size = UDim2.new(0, 0, 1, 0)
+            containerFrame.Size = UDim2.new(0, 0, 1, -20)
             containerFrame.BackgroundTransparency = 1
             containerFrame.Parent = TabPage
 
             local horizontalLayout = Instance.new("UIListLayout")
             horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
-            horizontalLayout.Padding = UDim.new(0, 25)
+            horizontalLayout.Padding = UDim.new(0, 15)
             horizontalLayout.SortOrder = Enum.SortOrder.LayoutOrder
             horizontalLayout.Parent = containerFrame
 
             horizontalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                containerFrame.Size = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X, 1, 0)
-                TabPage.CanvasSize = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X + 50, 0, 0)
+                containerFrame.Size = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X, 1, -20)
+                TabPage.CanvasSize = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X + 20, 0, 0)
             end)
         else
             TabPage.Size = UDim2.new(1, 0, 1, 0)
@@ -611,10 +614,11 @@ function AbsoluteLib:CreateWindow(config)
 
             local card = Instance.new("TextButton")
             card.Name = Name
-            card.Size = UDim2.new(0, 115, 0, 150)
+            card.Size = UDim2.new(0, 130, 0, 170)
             card.BackgroundColor3 = Color3.fromRGB(22, 23, 30)
             card.BackgroundTransparency = 0.5
             card.Text = ""
+            card.ClipsDescendants = true
             card.Parent = parentFrame
             AddCorner(card, 12)
 
@@ -696,6 +700,7 @@ function AbsoluteLib:CreateWindow(config)
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
             ApplyGradientHoverEffect(Frame, 8)
@@ -760,6 +765,7 @@ function AbsoluteLib:CreateWindow(config)
             Btn.TextSize = 13
             Btn.Font = Enum.Font.GothamSemibold
             Btn.TextXAlignment = Enum.TextXAlignment.Left
+            Btn.ClipsDescendants = true
             Btn.Parent = TabPage
             AddCorner(Btn, 8)
 
@@ -793,6 +799,7 @@ function AbsoluteLib:CreateWindow(config)
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 50)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
             ApplyGradientHoverEffect(Frame, 8)
@@ -979,6 +986,7 @@ function AbsoluteLib:CreateWindow(config)
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
             ApplyGradientHoverEffect(Frame, 8)
@@ -1032,6 +1040,7 @@ function AbsoluteLib:CreateWindow(config)
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
+            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
             ApplyGradientHoverEffect(Frame, 8)
