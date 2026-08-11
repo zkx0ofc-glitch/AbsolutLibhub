@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Clean Glass Edition - Fixed Edition)
-    Design: Dark Glassmorphism, Dynamic Neon Borders & Status Badges System
+    ABSOLUTE UI LIBRARY v2 (Neon Gradient Hover Edition)
+    Design: Dark Glassmorphism, Dynamic Gradient Borders on Hover & Status Badges
 ]]
 
 local AbsoluteLib = {}
@@ -218,7 +218,7 @@ function AbsoluteLib:InitConfigSystem(windowObj, folderName)
         end
 
         local success, err = pcall(function()
-            local decodedData = HttpService:JSONDecode(readfile(filePath))
+            local decodedData = HttpService:JSONEncode(readfile(filePath))
             for id, value in pairs(decodedData) do
                 if self.RegisteredElements[id] then
                     self.RegisteredElements[id].Set(value)
@@ -268,7 +268,7 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
-    -- Efeito Borda Neon Externa da Janela
+    -- Efeito Borda Neon Externa do Hub Principal
     local HubGlowFrame = Instance.new("Frame")
     HubGlowFrame.Name = "HubGlowFrame"
     HubGlowFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -292,7 +292,7 @@ function AbsoluteLib:CreateWindow(config)
     }
     HubGradient.Parent = HubStroke
 
-    -- Gerenciamento de Animação Neon da Borda Externa
+    -- Gerenciamento de Animação Neon Global (Gira todos os gradientes do sistema)
     local AnimatedGradients = { HubGradient }
     local RotConnection = RunService.RenderStepped:Connect(function(dt)
         if not MainFrame or not MainFrame.Parent then return end
@@ -304,16 +304,39 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Hover Padrão sem Efeito de Parallax / Sweep
-    local function CreateButtonGlow(button)
-        local baseColor = button.BackgroundColor3
+    -- Efeito Borda Gradiente Neon no Hover (Exatamente igual ao Hub)
+    local function ApplyGradientHoverEffect(element, cornerRadius)
+        local hoverGlowFrame = Instance.new("Frame")
+        hoverGlowFrame.Name = "HoverGlow"
+        hoverGlowFrame.Size = UDim2.new(1, 4, 1, 4)
+        hoverGlowFrame.Position = UDim2.new(0, -2, 0, -2)
+        hoverGlowFrame.BackgroundTransparency = 1
+        hoverGlowFrame.ZIndex = element.ZIndex - 1
+        hoverGlowFrame.Visible = false
+        hoverGlowFrame.Parent = element
+        AddCorner(hoverGlowFrame, (cornerRadius or 8) + 2)
 
-        button.MouseEnter:Connect(function()
-            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = HoverColor})
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = NeonWhite
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.2
+        stroke.Parent = hoverGlowFrame
+
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, NeonWhite),
+            ColorSequenceKeypoint.new(0.5, PrimaryColor),
+            ColorSequenceKeypoint.new(1, NeonWhite)
+        }
+        gradient.Parent = stroke
+        table.insert(AnimatedGradients, gradient)
+
+        element.MouseEnter:Connect(function()
+            hoverGlowFrame.Visible = true
         end)
 
-        button.MouseLeave:Connect(function()
-            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = baseColor})
+        element.MouseLeave:Connect(function()
+            hoverGlowFrame.Visible = false
         end)
     end
 
@@ -428,6 +451,7 @@ function AbsoluteLib:CreateWindow(config)
     SearchBox.TextXAlignment = Enum.TextXAlignment.Left
     SearchBox.Parent = MainContent
     AddCorner(SearchBox, 8)
+    ApplyGradientHoverEffect(SearchBox, 8)
 
     local SearchPadding = Instance.new("UIPadding")
     SearchPadding.PaddingLeft = UDim.new(0, 12)
@@ -479,7 +503,7 @@ function AbsoluteLib:CreateWindow(config)
         NavBtn.Parent = NavContainer
         AddCorner(NavBtn, 6)
 
-        CreateButtonGlow(NavBtn)
+        ApplyGradientHoverEffect(NavBtn, 6)
         if Tag then CreateBadge(NavBtn, Tag, UDim2.new(1, -8, 0.5, -9)) end
 
         local TabPage = Instance.new("ScrollingFrame")
@@ -494,7 +518,7 @@ function AbsoluteLib:CreateWindow(config)
             TabPage.ScrollBarThickness = 4
             TabPage.ScrollBarImageColor3 = PrimaryColor
             TabPage.ScrollingDirection = Enum.ScrollingDirection.X
-            TabPage.ClipsDescendants = true
+            TabPage.ClipsDescendants = false
 
             local viewPadding = Instance.new("UIPadding")
             viewPadding.PaddingTop = UDim.new(0, 10)
@@ -594,7 +618,7 @@ function AbsoluteLib:CreateWindow(config)
             card.Parent = parentFrame
             AddCorner(card, 12)
 
-            CreateButtonGlow(card)
+            ApplyGradientHoverEffect(card, 12)
             if Tag then CreateBadge(card, Tag, UDim2.new(0, 10, 0, 10)) end
 
             -- Botão de Estrela (Favoritos)
@@ -674,6 +698,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -140, 1, 0)
@@ -738,7 +763,7 @@ function AbsoluteLib:CreateWindow(config)
             Btn.Parent = TabPage
             AddCorner(Btn, 8)
 
-            CreateButtonGlow(Btn)
+            ApplyGradientHoverEffect(Btn, 8)
             if Tag then CreateBadge(Btn, Tag, UDim2.new(1, -12, 0.5, -9)) end
 
             Btn.MouseButton1Click:Connect(function()
@@ -770,6 +795,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -180, 0, 20)
@@ -865,6 +891,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 0, 44)
@@ -954,6 +981,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 1, 0)
@@ -1006,6 +1034,7 @@ function AbsoluteLib:CreateWindow(config)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
+            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -200, 1, 0)
