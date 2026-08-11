@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2.1 (Clipping Fixed & Neon Hover)
-    Design: Dark Glassmorphism, Dynamic Gradient Borders on Hover & Status Badges
+    ABSOLUTE UI LIBRARY v2.0 (Versão Estável sem Gradiente nos Botões)
+    Design: Dark Glassmorphism & Status Badges
 ]]
 
 local AbsoluteLib = {}
@@ -247,7 +247,6 @@ function AbsoluteLib:CreateWindow(config)
     local TitleText = config.Title or "Absolute Hub"
     local SubTitleText = config.SubTitle or "For Murder Drones"
     local PrimaryColor = config.PrimaryColor or Color3.fromRGB(0, 191, 255)
-    local HoverColor = config.HoverColor or Color3.fromRGB(0, 150, 220)
     local NeonWhite = Color3.fromRGB(255, 255, 255)
     local ToggleKey = config.ToggleKey or Enum.KeyCode.LeftControl
 
@@ -269,7 +268,7 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
-    -- Efeito Borda Neon Externa do Hub Principal
+    -- Efeito Borda Neon Apenas no MainFrame
     local HubGlowFrame = Instance.new("Frame")
     HubGlowFrame.Name = "HubGlowFrame"
     HubGlowFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -293,55 +292,13 @@ function AbsoluteLib:CreateWindow(config)
     }
     HubGradient.Parent = HubStroke
 
-    -- Gerenciamento de Animação Neon Global
-    local AnimatedGradients = { HubGradient }
     local RotConnection = RunService.RenderStepped:Connect(function(dt)
-        if not MainFrame or not MainFrame.Parent then return end
-        local rotDelta = dt * 90
-        for _, grad in ipairs(AnimatedGradients) do
-            if grad and grad.Parent then
-                grad.Rotation = (grad.Rotation + rotDelta) % 360
-            end
+        if HubGradient and HubGradient.Parent then
+            HubGradient.Rotation = (HubGradient.Rotation + (dt * 90)) % 360
         end
     end)
 
-    -- Efeito Borda Gradiente Neon no Hover
-    local function ApplyGradientHoverEffect(element, cornerRadius)
-        local hoverGlowFrame = Instance.new("Frame")
-        hoverGlowFrame.Name = "HoverGlow"
-        hoverGlowFrame.Size = UDim2.new(1, 2, 1, 2)
-        hoverGlowFrame.Position = UDim2.new(0, -1, 0, -1)
-        hoverGlowFrame.BackgroundTransparency = 1
-        hoverGlowFrame.ZIndex = element.ZIndex + 1
-        hoverGlowFrame.Visible = false
-        hoverGlowFrame.Parent = element
-        AddCorner(hoverGlowFrame, cornerRadius or 8)
-
-        local stroke = Instance.new("UIStroke")
-        stroke.Color = NeonWhite
-        stroke.Thickness = 1.5
-        stroke.Transparency = 0.1
-        stroke.Parent = hoverGlowFrame
-
-        local gradient = Instance.new("UIGradient")
-        gradient.Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, NeonWhite),
-            ColorSequenceKeypoint.new(0.5, PrimaryColor),
-            ColorSequenceKeypoint.new(1, NeonWhite)
-        }
-        gradient.Parent = stroke
-        table.insert(AnimatedGradients, gradient)
-
-        element.MouseEnter:Connect(function()
-            hoverGlowFrame.Visible = true
-        end)
-
-        element.MouseLeave:Connect(function()
-            hoverGlowFrame.Visible = false
-        end)
-    end
-
-    -- Arrastar Interface (Drag)
+    -- Dragging
     local isDragging, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
@@ -362,7 +319,7 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Toggle de Visibilidade por Tecla
+    -- Visibilidade
     local IsVisible = true
     local function SetUIVisibility(visible)
         IsVisible = visible
@@ -375,7 +332,7 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Sidebar (Painel Esquerdo)
+    -- Sidebar
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 200, 1, 0)
@@ -422,7 +379,7 @@ function AbsoluteLib:CreateWindow(config)
     NavLayout.Padding = UDim.new(0, 6)
     NavLayout.Parent = NavContainer
 
-    -- Conteúdo Principal (Lado Direito)
+    -- ÁREA DE CONTEÚDO PRINCIPAL (Corta elementos vazando)
     local MainContent = Instance.new("Frame")
     MainContent.Size = UDim2.new(1, -220, 1, -20)
     MainContent.Position = UDim2.new(0, 210, 0, 10)
@@ -453,15 +410,14 @@ function AbsoluteLib:CreateWindow(config)
     SearchBox.TextXAlignment = Enum.TextXAlignment.Left
     SearchBox.Parent = MainContent
     AddCorner(SearchBox, 8)
-    ApplyGradientHoverEffect(SearchBox, 8)
 
     local SearchPadding = Instance.new("UIPadding")
     SearchPadding.PaddingLeft = UDim.new(0, 12)
     SearchPadding.Parent = SearchBox
 
     local DisplayViews = Instance.new("Frame")
-    DisplayViews.Size = UDim2.new(1, -10, 1, -50)
-    DisplayViews.Position = UDim2.new(0, 0, 0, 50)
+    DisplayViews.Size = UDim2.new(1, 0, 1, -45)
+    DisplayViews.Position = UDim2.new(0, 0, 0, 45)
     DisplayViews.BackgroundTransparency = 1
     DisplayViews.ClipsDescendants = true
     DisplayViews.Parent = MainContent
@@ -484,7 +440,7 @@ function AbsoluteLib:CreateWindow(config)
     }
 
     ------------------------------------------------------------------------
-    -- CRIADOR DE ABAS (CreateTab)
+    -- CRIADOR DE ABAS
     ------------------------------------------------------------------------
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
@@ -506,19 +462,18 @@ function AbsoluteLib:CreateWindow(config)
         NavBtn.Parent = NavContainer
         AddCorner(NavBtn, 6)
 
-        ApplyGradientHoverEffect(NavBtn, 6)
         if Tag then CreateBadge(NavBtn, Tag, UDim2.new(1, -8, 0.5, -9)) end
 
         local TabPage = Instance.new("ScrollingFrame")
         TabPage.Name = "Page_" .. TabName
+        TabPage.Size = UDim2.new(1, 0, 1, 0)
         TabPage.Visible = false
         TabPage.BackgroundTransparency = 1
         TabPage.ClipsDescendants = true
+        TabPage.BorderSizePixel = 0
         TabPage.Parent = DisplayViews
 
         if IsHorizontalGrid then
-            TabPage.Size = UDim2.new(1, 0, 1, 0)
-            TabPage.Position = UDim2.new(0, 0, 0, 0)
             TabPage.ScrollBarThickness = 4
             TabPage.ScrollBarImageColor3 = PrimaryColor
             TabPage.ScrollingDirection = Enum.ScrollingDirection.X
@@ -530,29 +485,22 @@ function AbsoluteLib:CreateWindow(config)
             viewPadding.PaddingRight = UDim.new(0, 10)
             viewPadding.Parent = TabPage
 
-            local containerFrame = Instance.new("Frame")
-            containerFrame.Size = UDim2.new(0, 0, 1, -20)
-            containerFrame.BackgroundTransparency = 1
-            containerFrame.Parent = TabPage
-
             local horizontalLayout = Instance.new("UIListLayout")
             horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
-            horizontalLayout.Padding = UDim.new(0, 15)
+            horizontalLayout.Padding = UDim.new(0, 12)
             horizontalLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            horizontalLayout.Parent = containerFrame
+            horizontalLayout.Parent = TabPage
 
             horizontalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                containerFrame.Size = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X, 1, -20)
                 TabPage.CanvasSize = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X + 20, 0, 0)
             end)
         else
-            TabPage.Size = UDim2.new(1, 0, 1, 0)
             TabPage.ScrollBarThickness = 2
             TabPage.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 65)
             TabPage.ScrollingDirection = Enum.ScrollingDirection.Y
 
             local listLayout = Instance.new("UIListLayout")
-            listLayout.Padding = UDim.new(0, 12)
+            listLayout.Padding = UDim.new(0, 10)
             listLayout.Parent = TabPage
 
             listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -584,7 +532,7 @@ function AbsoluteLib:CreateWindow(config)
         table.insert(WindowObj.Tabs, TabObj)
         if #WindowObj.Tabs == 1 and not Hidden then TabObj:Select() end
 
-        -- Pesquisa ativa na aba
+        -- Pesquisa
         SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
             if WindowObj.ActiveTab == TabObj then
                 local cleanText = string.lower(SearchBox.Text)
@@ -602,7 +550,7 @@ function AbsoluteLib:CreateWindow(config)
         -- COMPONENTES DA ABA
         ------------------------------------------------------------------------
         
-        -- CARD DE JOGO (Grid Horizontal)
+        -- CARD DE JOGO (Grade Ajustada)
         function TabObj:CreateGameCard(cardConfig)
             cardConfig = cardConfig or {}
             local Name = cardConfig.Name or "Jogo"
@@ -610,22 +558,23 @@ function AbsoluteLib:CreateWindow(config)
             local Tag = cardConfig.Tag
             local Callback = cardConfig.Callback or function() end
 
-            local parentFrame = TabPage:FindFirstChildOfClass("Frame") or TabPage
-
             local card = Instance.new("TextButton")
             card.Name = Name
-            card.Size = UDim2.new(0, 130, 0, 170)
+            card.Size = UDim2.new(0, 140, 0, 180)
             card.BackgroundColor3 = Color3.fromRGB(22, 23, 30)
-            card.BackgroundTransparency = 0.5
+            card.BackgroundTransparency = 0.4
             card.Text = ""
             card.ClipsDescendants = true
-            card.Parent = parentFrame
-            AddCorner(card, 12)
+            card.Parent = TabPage
+            AddCorner(card, 10)
 
-            ApplyGradientHoverEffect(card, 12)
+            local cardStroke = Instance.new("UIStroke")
+            cardStroke.Color = Color3.fromRGB(45, 48, 65)
+            cardStroke.Thickness = 1
+            cardStroke.Parent = card
+
             if Tag then CreateBadge(card, Tag, UDim2.new(0, 10, 0, 10)) end
 
-            -- Botão de Estrela (Favoritos)
             local FavBtn = Instance.new("TextButton")
             FavBtn.Size = UDim2.new(0, 24, 0, 24)
             FavBtn.Position = UDim2.new(1, -28, 0, 6)
@@ -650,8 +599,8 @@ function AbsoluteLib:CreateWindow(config)
             end)
 
             local title = Instance.new("TextLabel")
-            title.Size = UDim2.new(1, -16, 0, 50)
-            title.Position = UDim2.new(0, 8, 0.5, 10)
+            title.Size = UDim2.new(1, -16, 0, 40)
+            title.Position = UDim2.new(0, 8, 0.5, 20)
             title.BackgroundTransparency = 1
             title.Text = Name
             title.TextColor3 = NeonWhite
@@ -659,6 +608,16 @@ function AbsoluteLib:CreateWindow(config)
             title.Font = Enum.Font.GothamBold
             title.TextWrapped = true
             title.Parent = card
+
+            card.MouseEnter:Connect(function()
+                Tween(card, {0.15}, {BackgroundColor3 = Color3.fromRGB(32, 34, 46)})
+                Tween(cardStroke, {0.15}, {Color = PrimaryColor})
+            end)
+
+            card.MouseLeave:Connect(function()
+                Tween(card, {0.15}, {BackgroundColor3 = Color3.fromRGB(22, 23, 30)})
+                Tween(cardStroke, {0.15}, {Color = Color3.fromRGB(45, 48, 65)})
+            end)
 
             card.MouseButton1Click:Connect(function()
                 if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
@@ -672,7 +631,7 @@ function AbsoluteLib:CreateWindow(config)
             return card
         end
 
-        -- COMPONENTE: SEÇÃO (LABEL)
+        -- COMPONENTE: SEÇÃO
         function TabObj:CreateSection(secConfig)
             local titleText = type(secConfig) == "string" and secConfig or (secConfig.Name or "Seção")
             
@@ -703,7 +662,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -140, 1, 0)
@@ -769,7 +727,6 @@ function AbsoluteLib:CreateWindow(config)
             Btn.Parent = TabPage
             AddCorner(Btn, 8)
 
-            ApplyGradientHoverEffect(Btn, 8)
             if Tag then CreateBadge(Btn, Tag, UDim2.new(1, -12, 0.5, -9)) end
 
             Btn.MouseButton1Click:Connect(function()
@@ -802,7 +759,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -180, 0, 20)
@@ -898,7 +854,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 0, 44)
@@ -975,7 +930,7 @@ function AbsoluteLib:CreateWindow(config)
             }
         end
 
-        -- COMPONENTE: TEXTBOX / INPUT
+        -- COMPONENTE: TEXTBOX
         function TabObj:CreateTextBox(inputConfig)
             inputConfig = inputConfig or {}
             local Name = inputConfig.Name or "Input"
@@ -989,7 +944,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -220, 1, 0)
@@ -1043,7 +997,6 @@ function AbsoluteLib:CreateWindow(config)
             Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
-            ApplyGradientHoverEffect(Frame, 8)
 
             local Label = Instance.new("TextLabel")
             Label.Size = UDim2.new(1, -200, 1, 0)
