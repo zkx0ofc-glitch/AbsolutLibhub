@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - FX & Favorites Update)
-    Design: Dark Glassmorphism, Interactive Mouse Parallax, Glow Sweep FX & Game Favorites System
+    ABSOLUTE UI LIBRARY v2 (Neon Glass Edition - Tags & Precision Sweep Update)
+    Design: Dark Glassmorphism, Dynamic Neon Borders & Status Badges System
 ]]
 
 local AbsoluteLib = {}
@@ -14,6 +14,15 @@ local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
+
+-- Cores do Sistema de Tags
+local TagColors = {
+    BETA = Color3.fromRGB(0, 150, 255),
+    ATUALIZANDO = Color3.fromRGB(255, 140, 0),
+    REMOVIDO = Color3.fromRGB(200, 40, 40),
+    BLOQUEADO = Color3.fromRGB(100, 100, 115),
+    NOVO = Color3.fromRGB(0, 230, 120)
+}
 
 -- Auxiliares de Estilização
 local function Tween(instance, info, properties)
@@ -29,17 +38,17 @@ local function AddCorner(parent, radius)
     return corner
 end
 
--- EFEITO VISUAL: Brilho Neon Passante (Sweep) ao passar o mouse
+-- EFEITO VISUAL: Brilho Neon Passante Ajustado ao Botão
 local function AddGlowSweepEffect(element, primaryColor)
     element.ClipsDescendants = true
 
     local sweepFrame = Instance.new("Frame")
     sweepFrame.Name = "GlowSweep"
-    sweepFrame.Size = UDim2.new(0, 30, 2, 0)
-    sweepFrame.Position = UDim2.new(-0.5, 0, -0.5, 0)
+    sweepFrame.Size = UDim2.new(0, 40, 2, 0)
+    sweepFrame.Position = UDim2.new(-0.8, 0, -0.5, 0)
     sweepFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    sweepFrame.BackgroundTransparency = 0.6
-    sweepFrame.Rotation = 25
+    sweepFrame.BackgroundTransparency = 0.7
+    sweepFrame.Rotation = 20
     sweepFrame.BorderSizePixel = 0
     sweepFrame.Parent = element
 
@@ -51,17 +60,54 @@ local function AddGlowSweepEffect(element, primaryColor)
     }
     gradient.Transparency = NumberSequence.new{
         NumberSequenceKeypoint.new(0, 1),
-        NumberSequenceKeypoint.new(0.5, 0.2),
+        NumberSequenceKeypoint.new(0.5, 0.1),
         NumberSequenceKeypoint.new(1, 1)
     }
     gradient.Parent = sweepFrame
 
     element.MouseEnter:Connect(function()
-        sweepFrame.Position = UDim2.new(-0.5, 0, -0.5, 0)
-        Tween(sweepFrame, {0.6, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {
-            Position = UDim2.new(1.5, 0, -0.5, 0)
+        sweepFrame.Position = UDim2.new(-0.8, 0, -0.5, 0)
+        Tween(sweepFrame, {0.55, Enum.EasingStyle.Quart, Enum.EasingDirection.Out}, {
+            Position = UDim2.new(1.8, 0, -0.5, 0)
         })
     end)
+end
+
+-- Auxiliar para Criar Badges/Tags
+local function CreateBadge(parent, tagType, customPosition)
+    if not tagType or not TagColors[string.upper(tagType)] then return end
+    local cleanTag = string.upper(tagType)
+    local tagColor = TagColors[cleanTag]
+
+    local badge = Instance.new("Frame")
+    badge.Name = "StatusBadge"
+    badge.Size = UDim2.new(0, 0, 0, 18)
+    badge.Position = customPosition or UDim2.new(1, -10, 0.5, -9)
+    badge.BackgroundColor3 = tagColor
+    badge.BackgroundTransparency = 0.2
+    badge.AnchorPoint = Vector2.new(1, 0)
+    badge.Parent = parent
+    AddCorner(badge, 4)
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = tagColor
+    stroke.Thickness = 1
+    stroke.Transparency = 0.3
+    stroke.Parent = badge
+
+    local label = Instance.new("TextLabel")
+    label.Text = cleanTag
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 9
+    label.TextColor3 = Color3.fromRGB(255, 255, 255)
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Parent = badge
+
+    local textSize = game:GetService("TextService"):GetTextSize(cleanTag, 9, Enum.Font.GothamBold, Vector2.new(200, 18))
+    badge.Size = UDim2.new(0, textSize.X + 10, 0, 18)
+
+    return badge
 end
 
 --------------------------------------------------------------------------------
@@ -239,7 +285,6 @@ function AbsoluteLib:CreateWindow(config)
     local HoverColor = config.HoverColor or Color3.fromRGB(0, 150, 220)
     local NeonWhite = Color3.fromRGB(255, 255, 255)
     local ToggleKey = config.ToggleKey or Enum.KeyCode.LeftControl
-    local ParallaxEnabled = config.Parallax ~= false
 
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "AbsoluteHub"
@@ -248,12 +293,10 @@ function AbsoluteLib:CreateWindow(config)
     pcall(function() ScreenGui.Parent = CoreGui end)
     if not ScreenGui.Parent then ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui") end
 
-    local BasePosition = UDim2.new(0.5, -425, 0.5, -260)
-
     local MainFrame = Instance.new("Frame")
     MainFrame.Name = "MainFrame"
     MainFrame.Size = UDim2.new(0, 850, 0, 520)
-    MainFrame.Position = BasePosition
+    MainFrame.Position = UDim2.new(0.5, -425, 0.5, -260)
     MainFrame.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
     MainFrame.BackgroundTransparency = 0.12
     MainFrame.Active = true
@@ -295,27 +338,6 @@ function AbsoluteLib:CreateWindow(config)
             end
         end
     end)
-
-    -- EFEITO MOUSE PARALLAX: Movimentação dinâmica do Hub seguindo o cursor
-    local isDragging = false
-    if ParallaxEnabled then
-        UserInputService.InputChanged:Connect(function(input)
-            if not isDragging and input.UserInputType == Enum.UserInputType.MouseMovement and MainFrame.Visible then
-                local mousePos = UserInputService:GetMouseLocation()
-                local viewportSize = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-                
-                local deltaX = (mousePos.X - (viewportSize.X / 2)) / (viewportSize.X / 2)
-                local deltaY = (mousePos.Y - (viewportSize.Y / 2)) / (viewportSize.Y / 2)
-
-                local offsetX = deltaX * 12
-                local offsetY = deltaY * 12
-
-                Tween(MainFrame, {0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out}, {
-                    Position = UDim2.new(BasePosition.X.Scale, BasePosition.X.Offset + offsetX, BasePosition.Y.Scale, BasePosition.Y.Offset + offsetY)
-                })
-            end
-        end)
-    end
 
     -- Auxiliar de Brilho em Botões
     local function CreateButtonGlow(button)
@@ -360,8 +382,8 @@ function AbsoluteLib:CreateWindow(config)
         end)
     end
 
-    -- Sistema de Arrastar (Drag)
-    local dragStart, startPos
+    -- Sistema de Arrastar (Drag Fixo)
+    local isDragging, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = true
@@ -372,7 +394,6 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             isDragging = false
-            BasePosition = MainFrame.Position
         end
     end)
     UserInputService.InputChanged:Connect(function(input)
@@ -508,6 +529,7 @@ function AbsoluteLib:CreateWindow(config)
         local TabName = tabConfig.Name or "Aba"
         local IsHorizontalGrid = tabConfig.HorizontalGrid or false
         local Hidden = tabConfig.Hidden or false
+        local Tag = tabConfig.Tag
 
         local NavBtn = Instance.new("TextButton")
         NavBtn.Size = UDim2.new(1, 0, 0, 36)
@@ -523,6 +545,7 @@ function AbsoluteLib:CreateWindow(config)
         AddCorner(NavBtn, 6)
 
         CreateButtonGlow(NavBtn)
+        if Tag then CreateBadge(NavBtn, Tag, UDim2.new(1, -8, 0.5, -9)) end
 
         local TabPage = Instance.new("ScrollingFrame")
         TabPage.Name = "Page_" .. TabName
@@ -578,6 +601,11 @@ function AbsoluteLib:CreateWindow(config)
         local TabObj = { Page = TabPage, Button = NavBtn, Name = TabName, SearchItems = {} }
 
         function TabObj:Select()
+            if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
+                AbsoluteLib:Notify({ Title = "Acesso Negado", Content = "Esta aba está " .. string.lower(Tag) .. "!", Duration = 2 })
+                return
+            end
+
             for _, t in pairs(WindowObj.Tabs) do
                 t.Page.Visible = false
                 Tween(t.Button, {0.2}, {BackgroundTransparency = 1, TextColor3 = Color3.fromRGB(140, 140, 155)})
@@ -612,11 +640,12 @@ function AbsoluteLib:CreateWindow(config)
         -- COMPONENTES DA ABA
         ------------------------------------------------------------------------
         
-        -- CARD DE JOGO COM SISTEMA DE FAVORITO (Grid Horizontal)
+        -- CARD DE JOGO (Grid Horizontal)
         function TabObj:CreateGameCard(cardConfig)
             cardConfig = cardConfig or {}
             local Name = cardConfig.Name or "Jogo"
             local GameId = cardConfig.GameId or Name
+            local Tag = cardConfig.Tag
             local Callback = cardConfig.Callback or function() end
 
             local parentFrame = TabPage:FindFirstChildOfClass("Frame") or TabPage
@@ -631,6 +660,7 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(card, 12)
 
             CreateButtonGlow(card)
+            if Tag then CreateBadge(card, Tag, UDim2.new(0, 10, 0, 10)) end
 
             -- Botão de Estrela (Favoritos)
             local FavBtn = Instance.new("TextButton")
@@ -668,6 +698,10 @@ function AbsoluteLib:CreateWindow(config)
             title.Parent = card
 
             card.MouseButton1Click:Connect(function()
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
+                    AbsoluteLib:Notify({ Title = "Indisponível", Content = "Este jogo está " .. string.lower(Tag) .. "!", Duration = 2 })
+                    return
+                end
                 task.spawn(Callback)
             end)
 
@@ -697,6 +731,7 @@ function AbsoluteLib:CreateWindow(config)
             tglConfig = tglConfig or {}
             local Name = tglConfig.Name or "Toggle"
             local State = tglConfig.Default or false
+            local Tag = tglConfig.Tag
             local Callback = tglConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
@@ -707,7 +742,7 @@ function AbsoluteLib:CreateWindow(config)
             AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -70, 1, 0)
+            Label.Size = UDim2.new(1, -140, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -716,6 +751,8 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
+
+            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -65, 0.5, -9)) end
 
             local Switch = Instance.new("TextButton")
             Switch.Size = UDim2.new(0, 40, 0, 22)
@@ -733,6 +770,10 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(Indicator, 8)
 
             local function SetState(val)
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
+                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta opção foi " .. string.lower(Tag) .. "!", Duration = 2 })
+                    return
+                end
                 State = val
                 Tween(Indicator, {0.18, Enum.EasingStyle.Quart}, {Position = State and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)})
                 Tween(Switch, {0.18, Enum.EasingStyle.Quart}, {BackgroundColor3 = State and PrimaryColor or Color3.fromRGB(35, 36, 48)})
@@ -749,21 +790,30 @@ function AbsoluteLib:CreateWindow(config)
         function TabObj:CreateButton(btnConfig)
             btnConfig = btnConfig or {}
             local Name = btnConfig.Name or "Botão"
+            local Tag = btnConfig.Tag
             local Callback = btnConfig.Callback or function() end
 
             local Btn = Instance.new("TextButton")
             Btn.Size = UDim2.new(1, -15, 0, 42)
             Btn.BackgroundColor3 = Color3.fromRGB(24, 26, 38)
-            Btn.Text = Name
+            Btn.Text = "   " .. Name
             Btn.TextColor3 = NeonWhite
             Btn.TextSize = 13
             Btn.Font = Enum.Font.GothamSemibold
+            Btn.TextXAlignment = Enum.TextXAlignment.Left
             Btn.Parent = TabPage
             AddCorner(Btn, 8)
 
             CreateButtonGlow(Btn)
+            if Tag then CreateBadge(Btn, Tag, UDim2.new(1, -12, 0.5, -9)) end
 
-            Btn.MouseButton1Click:Connect(function() task.spawn(Callback) end)
+            Btn.MouseButton1Click:Connect(function()
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
+                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta função foi " .. string.lower(Tag) .. "!", Duration = 2 })
+                    return
+                end
+                task.spawn(Callback)
+            end)
 
             table.insert(TabObj.SearchItems, { Name = Name, Instance = Btn })
             return Btn
@@ -776,6 +826,7 @@ function AbsoluteLib:CreateWindow(config)
             local Min = sliderConfig.Min or 0
             local Max = sliderConfig.Max or 100
             local Default = sliderConfig.Default or Min
+            local Tag = sliderConfig.Tag
             local Callback = sliderConfig.Callback or function() end
 
             local Value = math.clamp(Default, Min, Max)
@@ -788,7 +839,7 @@ function AbsoluteLib:CreateWindow(config)
             AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -100, 0, 20)
+            Label.Size = UDim2.new(1, -180, 0, 20)
             Label.Position = UDim2.new(0, 15, 0, 8)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -797,6 +848,8 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
+
+            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -95, 0, 9)) end
 
             local ValueLabel = Instance.new("TextLabel")
             ValueLabel.Size = UDim2.new(0, 80, 0, 20)
@@ -824,6 +877,7 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(SliderFill, 3)
 
             local function UpdateSlider(input)
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 local percent = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
                 Value = math.floor(Min + (Max - Min) * percent)
                 ValueLabel.Text = tostring(Value)
@@ -869,6 +923,7 @@ function AbsoluteLib:CreateWindow(config)
             local Name = dropConfig.Name or "Dropdown"
             local Options = dropConfig.Options or {}
             local CurrentOption = dropConfig.Default or Options[1] or ""
+            local Tag = dropConfig.Tag
             local Callback = dropConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
@@ -880,7 +935,7 @@ function AbsoluteLib:CreateWindow(config)
             AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -150, 0, 44)
+            Label.Size = UDim2.new(1, -220, 0, 44)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -889,6 +944,8 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
+
+            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -150, 0.5, -9)) end
 
             local DropButton = Instance.new("TextButton")
             DropButton.Size = UDim2.new(0, 130, 0, 28)
@@ -913,6 +970,10 @@ function AbsoluteLib:CreateWindow(config)
 
             local isOpen = false
             local function ToggleDrop()
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
+                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta opção está " .. string.lower(Tag) .. "!", Duration = 2 })
+                    return
+                end
                 isOpen = not isOpen
                 local targetHeight = isOpen and (50 + #Options * 28) or 44
                 Tween(Frame, {0.25, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, -15, 0, targetHeight)})
@@ -936,9 +997,7 @@ function AbsoluteLib:CreateWindow(config)
                 OptBtn.Parent = OptionsContainer
                 AddCorner(OptBtn, 4)
 
-                OptBtn.MouseButton1Click:Connect(function()
-                    SelectOption(opt)
-                end)
+                OptBtn.MouseButton1Click:Connect(function() SelectOption(opt) end)
             end
 
             DropButton.MouseButton1Click:Connect(ToggleDrop)
@@ -955,6 +1014,7 @@ function AbsoluteLib:CreateWindow(config)
             inputConfig = inputConfig or {}
             local Name = inputConfig.Name or "Input"
             local Placeholder = inputConfig.Placeholder or "Digite aqui..."
+            local Tag = inputConfig.Tag
             local Callback = inputConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
@@ -965,7 +1025,7 @@ function AbsoluteLib:CreateWindow(config)
             AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -160, 1, 0)
+            Label.Size = UDim2.new(1, -220, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -974,6 +1034,8 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
+
+            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -160, 0.5, -9)) end
 
             local Box = Instance.new("TextBox")
             Box.Size = UDim2.new(0, 140, 0, 26)
@@ -989,6 +1051,7 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(Box, 6)
 
             Box.FocusLost:Connect(function(enterPressed)
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 task.spawn(Callback, Box.Text, enterPressed)
             end)
 
@@ -1004,6 +1067,7 @@ function AbsoluteLib:CreateWindow(config)
             kbConfig = kbConfig or {}
             local Name = kbConfig.Name or "Keybind"
             local CurrentKey = kbConfig.Default or Enum.KeyCode.E
+            local Tag = kbConfig.Tag
             local Callback = kbConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
@@ -1014,7 +1078,7 @@ function AbsoluteLib:CreateWindow(config)
             AddGlowSweepEffect(Frame, PrimaryColor)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -130, 1, 0)
+            Label.Size = UDim2.new(1, -200, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -1023,6 +1087,8 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
+
+            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -135, 0.5, -9)) end
 
             local KeyBtn = Instance.new("TextButton")
             KeyBtn.Size = UDim2.new(0, 110, 0, 26)
@@ -1037,6 +1103,7 @@ function AbsoluteLib:CreateWindow(config)
 
             local Binding = false
             KeyBtn.MouseButton1Click:Connect(function()
+                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 if Binding then return end
                 Binding = true
                 KeyBtn.Text = "..."
