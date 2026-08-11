@@ -1,6 +1,6 @@
 --[[
-    ABSOLUTE UI LIBRARY v2.0 (Versão Estável sem Gradiente nos Botões)
-    Design: Dark Glassmorphism & Status Badges
+    ABSOLUTE UI LIBRARY v2.1 (Neon Glass Edition - Update Tags & Favoritos)
+    Design: Dark Glassmorphism, Dynamic Neon Borders, Horizontal Cards Grid, Tags & Favorites System
 ]]
 
 local AbsoluteLib = {}
@@ -15,22 +15,14 @@ local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
--- Cores do Sistema de Tags
-local TagColors = {
-    BETA = Color3.fromRGB(0, 150, 255),
-    ATUALIZANDO = Color3.fromRGB(255, 140, 0),
-    REMOVIDO = Color3.fromRGB(200, 40, 40),
-    BLOQUEADO = Color3.fromRGB(100, 100, 115),
-    NOVO = Color3.fromRGB(0, 230, 120)
-}
-
--- Auxiliares de Estilização
+-- Auxiliar de Animação (Tween)
 local function Tween(instance, info, properties)
     local tween = TweenService:Create(instance, TweenInfo.new(unpack(info)), properties)
     tween:Play()
     return tween
 end
 
+-- Auxiliar de Canto Arredondado
 local function AddCorner(parent, radius)
     local corner = Instance.new("UICorner")
     corner.CornerRadius = UDim.new(0, radius or 8)
@@ -38,19 +30,29 @@ local function AddCorner(parent, radius)
     return corner
 end
 
--- Auxiliar para Criar Badges/Tags
-local function CreateBadge(parent, tagType, customPosition)
-    if not tagType or not TagColors[string.upper(tagType)] then return end
-    local cleanTag = string.upper(tagType)
-    local tagColor = TagColors[cleanTag]
+-- MAPA DE CORES DAS TAGS
+local TAG_COLORS = {
+    BETA = Color3.fromRGB(255, 170, 0),        -- Laranja
+    ATUALIZANDO = Color3.fromRGB(0, 170, 255), -- Azul Claro
+    REMOVIDO = Color3.fromRGB(150, 150, 150),  -- Cinza
+    BLOQUEADO = Color3.fromRGB(255, 50, 50),   -- Vermelho
+    NOVO = Color3.fromRGB(50, 220, 100)        -- Verde
+}
+
+-- Auxiliar para Criar Tag Visual (Badge)
+local function CreateBadge(parent, tagType, position, anchorPoint)
+    tagType = string.upper(tostring(tagType or ""))
+    local tagColor = TAG_COLORS[tagType]
+    if not tagColor then return nil end
 
     local badge = Instance.new("Frame")
-    badge.Name = "StatusBadge"
-    badge.Size = UDim2.new(0, 0, 0, 18)
-    badge.Position = customPosition or UDim2.new(1, -10, 0.5, -9)
+    badge.Name = "Badge_" .. tagType
+    badge.Size = UDim2.new(0, 0, 0, 16)
+    badge.Position = position or UDim2.new(1, -6, 0, 6)
+    badge.AnchorPoint = anchorPoint or Vector2.new(1, 0)
     badge.BackgroundColor3 = tagColor
     badge.BackgroundTransparency = 0.2
-    badge.AnchorPoint = Vector2.new(1, 0)
+    badge.ZIndex = parent.ZIndex + 5
     badge.Parent = parent
     AddCorner(badge, 4)
 
@@ -61,7 +63,7 @@ local function CreateBadge(parent, tagType, customPosition)
     stroke.Parent = badge
 
     local label = Instance.new("TextLabel")
-    label.Text = cleanTag
+    label.Text = tagType
     label.Font = Enum.Font.GothamBold
     label.TextSize = 9
     label.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -69,8 +71,9 @@ local function CreateBadge(parent, tagType, customPosition)
     label.BackgroundTransparency = 1
     label.Parent = badge
 
-    local textSize = game:GetService("TextService"):GetTextSize(cleanTag, 9, Enum.Font.GothamBold, Vector2.new(200, 18))
-    badge.Size = UDim2.new(0, textSize.X + 10, 0, 18)
+    -- Ajusta tamanho dinâmico com base no texto
+    local textWidth = #tagType * 6 + 10
+    badge.Size = UDim2.new(0, textWidth, 0, 16)
 
     return badge
 end
@@ -218,7 +221,7 @@ function AbsoluteLib:InitConfigSystem(windowObj, folderName)
         end
 
         local success, err = pcall(function()
-            local decodedData = HttpService:JSONEncode(readfile(filePath))
+            local decodedData = HttpService:JSONDecode(readfile(filePath))
             for id, value in pairs(decodedData) do
                 if self.RegisteredElements[id] then
                     self.RegisteredElements[id].Set(value)
@@ -247,6 +250,7 @@ function AbsoluteLib:CreateWindow(config)
     local TitleText = config.Title or "Absolute Hub"
     local SubTitleText = config.SubTitle or "For Murder Drones"
     local PrimaryColor = config.PrimaryColor or Color3.fromRGB(0, 191, 255)
+    local HoverColor = config.HoverColor or Color3.fromRGB(0, 150, 220)
     local NeonWhite = Color3.fromRGB(255, 255, 255)
     local ToggleKey = config.ToggleKey or Enum.KeyCode.LeftControl
 
@@ -264,11 +268,10 @@ function AbsoluteLib:CreateWindow(config)
     MainFrame.BackgroundColor3 = Color3.fromRGB(8, 9, 13)
     MainFrame.BackgroundTransparency = 0.12
     MainFrame.Active = true
-    MainFrame.ClipsDescendants = true
     MainFrame.Parent = ScreenGui
     AddCorner(MainFrame, 16)
 
-    -- Efeito Borda Neon Apenas no MainFrame
+    -- Efeito Borda Neon Externa
     local HubGlowFrame = Instance.new("Frame")
     HubGlowFrame.Name = "HubGlowFrame"
     HubGlowFrame.Size = UDim2.new(1, 4, 1, 4)
@@ -292,34 +295,79 @@ function AbsoluteLib:CreateWindow(config)
     }
     HubGradient.Parent = HubStroke
 
+    -- Gerenciamento de Animação Neon Global
+    local AnimatedGradients = { HubGradient }
     local RotConnection = RunService.RenderStepped:Connect(function(dt)
-        if HubGradient and HubGradient.Parent then
-            HubGradient.Rotation = (HubGradient.Rotation + (dt * 90)) % 360
+        if not MainFrame or not MainFrame.Parent then return end
+        local rotDelta = dt * 90
+        for _, grad in ipairs(AnimatedGradients) do
+            if grad and grad.Parent then
+                grad.Rotation = (grad.Rotation + rotDelta) % 360
+            end
         end
     end)
 
-    -- Dragging
-    local isDragging, dragStart, startPos
+    -- Auxiliar de Brilho em Botões
+    local function CreateButtonGlow(button)
+        local glowBorder = Instance.new("Frame")
+        glowBorder.Size = UDim2.new(1, 6, 1, 6)
+        glowBorder.Position = UDim2.new(0, -3, 0, -3)
+        glowBorder.BackgroundTransparency = 1
+        glowBorder.ZIndex = button.ZIndex - 1
+        glowBorder.Visible = false
+        glowBorder.Parent = button
+        AddCorner(glowBorder, 10)
+
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = NeonWhite
+        stroke.Thickness = 1.5
+        stroke.Transparency = 0.4
+        stroke.Parent = glowBorder
+
+        local gradient = Instance.new("UIGradient")
+        gradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, NeonWhite),
+            ColorSequenceKeypoint.new(0.5, PrimaryColor),
+            ColorSequenceKeypoint.new(1, NeonWhite)
+        }
+        gradient.Parent = stroke
+        table.insert(AnimatedGradients, gradient)
+
+        button.MouseEnter:Connect(function()
+            glowBorder.Visible = true
+            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = HoverColor})
+            Tween(stroke, {0.2, Enum.EasingStyle.Quad}, {Transparency = 0.1})
+        end)
+
+        button.MouseLeave:Connect(function()
+            Tween(button, {0.2, Enum.EasingStyle.Quad}, {BackgroundColor3 = Color3.fromRGB(24, 26, 38)})
+            Tween(stroke, {0.3, Enum.EasingStyle.Quad}, {Transparency = 0.7})
+            task.delay(0.2, function()
+                if glowBorder then glowBorder.Visible = false end
+            end)
+        end)
+    end
+
+    -- Sistema de Arrastar (Drag)
+    local dragging, dragStart, startPos
     MainFrame.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = true
+            dragging = true
             dragStart = input.Position
             startPos = MainFrame.Position
         end
     end)
     MainFrame.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            isDragging = false
-        end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
     end)
     UserInputService.InputChanged:Connect(function(input)
-        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
             MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 
-    -- Visibilidade
+    -- Toggle de Visibilidade por Tecla
     local IsVisible = true
     local function SetUIVisibility(visible)
         IsVisible = visible
@@ -332,7 +380,7 @@ function AbsoluteLib:CreateWindow(config)
         end
     end)
 
-    -- Sidebar
+    -- Sidebar (Painel Esquerdo)
     local Sidebar = Instance.new("Frame")
     Sidebar.Name = "Sidebar"
     Sidebar.Size = UDim2.new(0, 200, 1, 0)
@@ -379,12 +427,11 @@ function AbsoluteLib:CreateWindow(config)
     NavLayout.Padding = UDim.new(0, 6)
     NavLayout.Parent = NavContainer
 
-    -- ÁREA DE CONTEÚDO PRINCIPAL (Corta elementos vazando)
+    -- Conteúdo Principal (Lado Direito)
     local MainContent = Instance.new("Frame")
-    MainContent.Size = UDim2.new(1, -220, 1, -20)
-    MainContent.Position = UDim2.new(0, 210, 0, 10)
+    MainContent.Size = UDim2.new(1, -240, 1, -40)
+    MainContent.Position = UDim2.new(0, 220, 0, 20)
     MainContent.BackgroundTransparency = 1
-    MainContent.ClipsDescendants = true
     MainContent.Parent = MainFrame
 
     local SectionTitle = Instance.new("TextLabel")
@@ -398,8 +445,8 @@ function AbsoluteLib:CreateWindow(config)
     SectionTitle.Parent = MainContent
 
     local SearchBox = Instance.new("TextBox")
-    SearchBox.Size = UDim2.new(0, 220, 0, 32)
-    SearchBox.Position = UDim2.new(1, -230, 0, 0)
+    SearchBox.Size = UDim2.new(0, 250, 0, 32)
+    SearchBox.Position = UDim2.new(1, -250, 0, 0)
     SearchBox.BackgroundColor3 = Color3.fromRGB(20, 20, 28)
     SearchBox.BackgroundTransparency = 0.4
     SearchBox.PlaceholderText = "Pesquisar..."
@@ -416,13 +463,10 @@ function AbsoluteLib:CreateWindow(config)
     SearchPadding.Parent = SearchBox
 
     local DisplayViews = Instance.new("Frame")
-    DisplayViews.Size = UDim2.new(1, 0, 1, -45)
-    DisplayViews.Position = UDim2.new(0, 0, 0, 45)
+    DisplayViews.Size = UDim2.new(1, 0, 1, -50)
+    DisplayViews.Position = UDim2.new(0, 0, 0, 50)
     DisplayViews.BackgroundTransparency = 1
-    DisplayViews.ClipsDescendants = true
     DisplayViews.Parent = MainContent
-
-    local FavoritesList = {}
 
     local WindowObj = {
         ScreenGui = ScreenGui,
@@ -430,7 +474,6 @@ function AbsoluteLib:CreateWindow(config)
         Tabs = {},
         ActiveTab = nil,
         PrimaryColor = PrimaryColor,
-        Favorites = FavoritesList,
         SetToggleKey = function(self, newKey) ToggleKey = newKey end,
         ToggleUI = function(self) SetUIVisibility(not IsVisible) end,
         Destroy = function(self)
@@ -440,14 +483,14 @@ function AbsoluteLib:CreateWindow(config)
     }
 
     ------------------------------------------------------------------------
-    -- CRIADOR DE ABAS
+    -- CRIADOR DE ABAS (CreateTab)
     ------------------------------------------------------------------------
     function WindowObj:CreateTab(tabConfig)
         tabConfig = tabConfig or {}
         local TabName = tabConfig.Name or "Aba"
         local IsHorizontalGrid = tabConfig.HorizontalGrid or false
         local Hidden = tabConfig.Hidden or false
-        local Tag = tabConfig.Tag
+        local TabTag = tabConfig.Tag or nil -- SUPORTE A TAGS ("BETA", "BLOQUEADO", etc)
 
         local NavBtn = Instance.new("TextButton")
         NavBtn.Size = UDim2.new(1, 0, 0, 36)
@@ -462,45 +505,66 @@ function AbsoluteLib:CreateWindow(config)
         NavBtn.Parent = NavContainer
         AddCorner(NavBtn, 6)
 
-        if Tag then CreateBadge(NavBtn, Tag, UDim2.new(1, -8, 0.5, -9)) end
+        -- Aplicação de Badge/Tag na Aba
+        local isDisabled = false
+        if TabTag then
+            local upperTag = string.upper(TabTag)
+            CreateBadge(NavBtn, upperTag, UDim2.new(1, -8, 0.5, -8), Vector2.new(1, 0))
+            if upperTag == "BLOQUEADO" or upperTag == "REMOVIDO" then
+                isDisabled = true
+                NavBtn.AutoButtonColor = false
+                NavBtn.TextColor3 = Color3.fromRGB(90, 90, 100)
+            end
+        end
+
+        if not isDisabled then
+            CreateButtonGlow(NavBtn)
+        end
 
         local TabPage = Instance.new("ScrollingFrame")
         TabPage.Name = "Page_" .. TabName
-        TabPage.Size = UDim2.new(1, 0, 1, 0)
         TabPage.Visible = false
         TabPage.BackgroundTransparency = 1
-        TabPage.ClipsDescendants = true
-        TabPage.BorderSizePixel = 0
         TabPage.Parent = DisplayViews
 
         if IsHorizontalGrid then
+            TabPage.Size = UDim2.new(1, -30, 0, 190)
+            TabPage.Position = UDim2.new(0, 15, 0, 10)
             TabPage.ScrollBarThickness = 4
             TabPage.ScrollBarImageColor3 = PrimaryColor
             TabPage.ScrollingDirection = Enum.ScrollingDirection.X
+            TabPage.ClipsDescendants = true
 
             local viewPadding = Instance.new("UIPadding")
             viewPadding.PaddingTop = UDim.new(0, 10)
             viewPadding.PaddingBottom = UDim.new(0, 10)
-            viewPadding.PaddingLeft = UDim.new(0, 5)
+            viewPadding.PaddingLeft = UDim.new(0, 10)
             viewPadding.PaddingRight = UDim.new(0, 10)
             viewPadding.Parent = TabPage
 
+            local containerFrame = Instance.new("Frame")
+            containerFrame.Size = UDim2.new(0, 0, 1, 0)
+            containerFrame.BackgroundTransparency = 1
+            containerFrame.Parent = TabPage
+
             local horizontalLayout = Instance.new("UIListLayout")
             horizontalLayout.FillDirection = Enum.FillDirection.Horizontal
-            horizontalLayout.Padding = UDim.new(0, 12)
+            horizontalLayout.Padding = UDim.new(0, 25)
             horizontalLayout.SortOrder = Enum.SortOrder.LayoutOrder
-            horizontalLayout.Parent = TabPage
+            horizontalLayout.Parent = containerFrame
 
             horizontalLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-                TabPage.CanvasSize = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X + 20, 0, 0)
+                containerFrame.Size = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X, 1, 0)
+                TabPage.CanvasSize = UDim2.new(0, horizontalLayout.AbsoluteContentSize.X + 50, 0, 0)
             end)
         else
+            TabPage.Size = UDim2.new(1, 0, 1, 0)
             TabPage.ScrollBarThickness = 2
             TabPage.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 65)
             TabPage.ScrollingDirection = Enum.ScrollingDirection.Y
 
             local listLayout = Instance.new("UIListLayout")
-            listLayout.Padding = UDim.new(0, 10)
+            listLayout.Padding = UDim.new(0, 12)
             listLayout.Parent = TabPage
 
             listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
@@ -511,8 +575,8 @@ function AbsoluteLib:CreateWindow(config)
         local TabObj = { Page = TabPage, Button = NavBtn, Name = TabName, SearchItems = {} }
 
         function TabObj:Select()
-            if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
-                AbsoluteLib:Notify({ Title = "Acesso Negado", Content = "Esta aba está " .. string.lower(Tag) .. "!", Duration = 2 })
+            if isDisabled then
+                AbsoluteLib:Notify({ Title = "Acesso Negado", Content = "Esta aba está " .. string.upper(TabTag) .. ".", Duration = 2 })
                 return
             end
 
@@ -530,9 +594,9 @@ function AbsoluteLib:CreateWindow(config)
         NavBtn.MouseButton1Click:Connect(function() TabObj:Select() end)
 
         table.insert(WindowObj.Tabs, TabObj)
-        if #WindowObj.Tabs == 1 and not Hidden then TabObj:Select() end
+        if #WindowObj.Tabs == 1 and not Hidden and not isDisabled then TabObj:Select() end
 
-        -- Pesquisa
+        -- Pesquisa ativa na aba
         SearchBox:GetPropertyChangedSignal("Text"):Connect(function()
             if WindowObj.ActiveTab == TabObj then
                 local cleanText = string.lower(SearchBox.Text)
@@ -550,88 +614,98 @@ function AbsoluteLib:CreateWindow(config)
         -- COMPONENTES DA ABA
         ------------------------------------------------------------------------
         
-        -- CARD DE JOGO (Grade Ajustada)
+        -- CARD DE JOGO (Grid Horizontal - com Suporte a Favoritos e Tags)
         function TabObj:CreateGameCard(cardConfig)
             cardConfig = cardConfig or {}
             local Name = cardConfig.Name or "Jogo"
-            local GameId = cardConfig.GameId or Name
-            local Tag = cardConfig.Tag
             local Callback = cardConfig.Callback or function() end
+            local CardTag = cardConfig.Tag or nil -- SUPORTE A TAGS ("BETA", "BLOQUEADO", etc)
+            local IsFavorite = cardConfig.Favorite or false
+
+            local parentFrame = TabPage:FindFirstChildOfClass("Frame") or TabPage
 
             local card = Instance.new("TextButton")
             card.Name = Name
-            card.Size = UDim2.new(0, 140, 0, 180)
+            card.Size = UDim2.new(0, 115, 0, 150)
             card.BackgroundColor3 = Color3.fromRGB(22, 23, 30)
-            card.BackgroundTransparency = 0.4
+            card.BackgroundTransparency = 0.5
             card.Text = ""
-            card.ClipsDescendants = true
-            card.Parent = TabPage
-            AddCorner(card, 10)
+            card.LayoutOrder = IsFavorite and 0 or 10
+            card.Parent = parentFrame
+            AddCorner(card, 12)
 
-            local cardStroke = Instance.new("UIStroke")
-            cardStroke.Color = Color3.fromRGB(45, 48, 65)
-            cardStroke.Thickness = 1
-            cardStroke.Parent = card
+            local cardDisabled = false
+            if CardTag then
+                local upperTag = string.upper(CardTag)
+                CreateBadge(card, upperTag, UDim2.new(0, 6, 0, 6), Vector2.new(0, 0))
+                if upperTag == "BLOQUEADO" or upperTag == "REMOVIDO" then
+                    cardDisabled = true
+                    card.AutoButtonColor = false
+                    card.BackgroundTransparency = 0.8
+                end
+            end
 
-            if Tag then CreateBadge(card, Tag, UDim2.new(0, 10, 0, 10)) end
+            if not cardDisabled then
+                CreateButtonGlow(card)
+            end
 
+            -- BOTÃO DE FAVORITO (ESTRELA)
             local FavBtn = Instance.new("TextButton")
-            FavBtn.Size = UDim2.new(0, 24, 0, 24)
-            FavBtn.Position = UDim2.new(1, -28, 0, 6)
+            FavBtn.Name = "FavoriteBtn"
+            FavBtn.Size = UDim2.new(0, 22, 0, 22)
+            FavBtn.Position = UDim2.new(1, -26, 0, 6)
             FavBtn.BackgroundTransparency = 1
-            FavBtn.Text = FavoritesList[GameId] and "★" or "☆"
-            FavBtn.TextColor3 = FavoritesList[GameId] and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
+            FavBtn.Text = IsFavorite and "★" or "☆"
+            FavBtn.TextColor3 = IsFavorite and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
             FavBtn.TextSize = 16
             FavBtn.Font = Enum.Font.GothamBold
-            FavBtn.ZIndex = card.ZIndex + 2
+            FavBtn.ZIndex = card.ZIndex + 6
             FavBtn.Parent = card
 
+            local function SetFavorite(favState)
+                IsFavorite = favState
+                FavBtn.Text = IsFavorite and "★" or "☆"
+                FavBtn.TextColor3 = IsFavorite and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
+                card.LayoutOrder = IsFavorite and 0 or 10
+            end
+
             FavBtn.MouseButton1Click:Connect(function()
-                FavoritesList[GameId] = not FavoritesList[GameId]
-                FavBtn.Text = FavoritesList[GameId] and "★" or "☆"
-                FavBtn.TextColor3 = FavoritesList[GameId] and Color3.fromRGB(255, 215, 0) or Color3.fromRGB(120, 120, 140)
-                
+                SetFavorite(not IsFavorite)
                 AbsoluteLib:Notify({
                     Title = "Favoritos",
-                    Content = FavoritesList[GameId] and (Name .. " adicionado aos favoritos!") or (Name .. " removido dos favoritos."),
+                    Content = IsFavorite and (Name .. " adicionado aos favoritos!") or (Name .. " removido dos favoritos."),
                     Duration = 2
                 })
             end)
 
             local title = Instance.new("TextLabel")
-            title.Size = UDim2.new(1, -16, 0, 40)
-            title.Position = UDim2.new(0, 8, 0.5, 20)
+            title.Size = UDim2.new(1, -16, 0, 50)
+            title.Position = UDim2.new(0, 8, 0.5, 10)
             title.BackgroundTransparency = 1
             title.Text = Name
-            title.TextColor3 = NeonWhite
+            title.TextColor3 = cardDisabled and Color3.fromRGB(100, 100, 110) or NeonWhite
             title.TextSize = 12
             title.Font = Enum.Font.GothamBold
             title.TextWrapped = true
             title.Parent = card
 
-            card.MouseEnter:Connect(function()
-                Tween(card, {0.15}, {BackgroundColor3 = Color3.fromRGB(32, 34, 46)})
-                Tween(cardStroke, {0.15}, {Color = PrimaryColor})
-            end)
-
-            card.MouseLeave:Connect(function()
-                Tween(card, {0.15}, {BackgroundColor3 = Color3.fromRGB(22, 23, 30)})
-                Tween(cardStroke, {0.15}, {Color = Color3.fromRGB(45, 48, 65)})
-            end)
-
             card.MouseButton1Click:Connect(function()
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
-                    AbsoluteLib:Notify({ Title = "Indisponível", Content = "Este jogo está " .. string.lower(Tag) .. "!", Duration = 2 })
+                if cardDisabled then
+                    AbsoluteLib:Notify({ Title = "Acesso Negado", Content = "Este jogo está " .. string.upper(CardTag) .. ".", Duration = 2 })
                     return
                 end
                 task.spawn(Callback)
             end)
 
             table.insert(TabObj.SearchItems, { Name = Name, Instance = card })
-            return card
+            return {
+                Card = card,
+                SetFavorite = SetFavorite,
+                IsFavorite = function() return IsFavorite end
+            }
         end
 
-        -- COMPONENTE: SEÇÃO
+        -- COMPONENTE: SEÇÃO (LABEL)
         function TabObj:CreateSection(secConfig)
             local titleText = type(secConfig) == "string" and secConfig or (secConfig.Name or "Seção")
             
@@ -653,18 +727,16 @@ function AbsoluteLib:CreateWindow(config)
             tglConfig = tglConfig or {}
             local Name = tglConfig.Name or "Toggle"
             local State = tglConfig.Default or false
-            local Tag = tglConfig.Tag
             local Callback = tglConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
-            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -140, 1, 0)
+            Label.Size = UDim2.new(1, -70, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -673,8 +745,6 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
-
-            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -65, 0.5, -9)) end
 
             local Switch = Instance.new("TextButton")
             Switch.Size = UDim2.new(0, 40, 0, 22)
@@ -692,10 +762,6 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(Indicator, 8)
 
             local function SetState(val)
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
-                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta opção foi " .. string.lower(Tag) .. "!", Duration = 2 })
-                    return
-                end
                 State = val
                 Tween(Indicator, {0.18, Enum.EasingStyle.Quart}, {Position = State and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)})
                 Tween(Switch, {0.18, Enum.EasingStyle.Quart}, {BackgroundColor3 = State and PrimaryColor or Color3.fromRGB(35, 36, 48)})
@@ -712,30 +778,21 @@ function AbsoluteLib:CreateWindow(config)
         function TabObj:CreateButton(btnConfig)
             btnConfig = btnConfig or {}
             local Name = btnConfig.Name or "Botão"
-            local Tag = btnConfig.Tag
             local Callback = btnConfig.Callback or function() end
 
             local Btn = Instance.new("TextButton")
             Btn.Size = UDim2.new(1, -15, 0, 42)
             Btn.BackgroundColor3 = Color3.fromRGB(24, 26, 38)
-            Btn.Text = "   " .. Name
+            Btn.Text = Name
             Btn.TextColor3 = NeonWhite
             Btn.TextSize = 13
             Btn.Font = Enum.Font.GothamSemibold
-            Btn.TextXAlignment = Enum.TextXAlignment.Left
-            Btn.ClipsDescendants = true
             Btn.Parent = TabPage
             AddCorner(Btn, 8)
 
-            if Tag then CreateBadge(Btn, Tag, UDim2.new(1, -12, 0.5, -9)) end
+            CreateButtonGlow(Btn)
 
-            Btn.MouseButton1Click:Connect(function()
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
-                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta função foi " .. string.lower(Tag) .. "!", Duration = 2 })
-                    return
-                end
-                task.spawn(Callback)
-            end)
+            Btn.MouseButton1Click:Connect(function() task.spawn(Callback) end)
 
             table.insert(TabObj.SearchItems, { Name = Name, Instance = Btn })
             return Btn
@@ -748,7 +805,6 @@ function AbsoluteLib:CreateWindow(config)
             local Min = sliderConfig.Min or 0
             local Max = sliderConfig.Max or 100
             local Default = sliderConfig.Default or Min
-            local Tag = sliderConfig.Tag
             local Callback = sliderConfig.Callback or function() end
 
             local Value = math.clamp(Default, Min, Max)
@@ -756,12 +812,11 @@ function AbsoluteLib:CreateWindow(config)
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 50)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
-            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -180, 0, 20)
+            Label.Size = UDim2.new(1, -100, 0, 20)
             Label.Position = UDim2.new(0, 15, 0, 8)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -770,8 +825,6 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
-
-            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -95, 0, 9)) end
 
             local ValueLabel = Instance.new("TextLabel")
             ValueLabel.Size = UDim2.new(0, 80, 0, 20)
@@ -799,7 +852,6 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(SliderFill, 3)
 
             local function UpdateSlider(input)
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 local percent = math.clamp((input.Position.X - SliderTrack.AbsolutePosition.X) / SliderTrack.AbsoluteSize.X, 0, 1)
                 Value = math.floor(Min + (Max - Min) * percent)
                 ValueLabel.Text = tostring(Value)
@@ -807,23 +859,23 @@ function AbsoluteLib:CreateWindow(config)
                 task.spawn(Callback, Value)
             end
 
-            local isSliderDragging = false
+            local isDragging = false
             SliderTrack.InputBegan:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    isSliderDragging = true
+                    isDragging = true
                     UpdateSlider(input)
                 end
             end)
 
             UserInputService.InputChanged:Connect(function(input)
-                if isSliderDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+                if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then
                     UpdateSlider(input)
                 end
             end)
 
             UserInputService.InputEnded:Connect(function(input)
                 if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                    isSliderDragging = false
+                    isDragging = false
                 end
             end)
 
@@ -845,7 +897,6 @@ function AbsoluteLib:CreateWindow(config)
             local Name = dropConfig.Name or "Dropdown"
             local Options = dropConfig.Options or {}
             local CurrentOption = dropConfig.Default or Options[1] or ""
-            local Tag = dropConfig.Tag
             local Callback = dropConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
@@ -856,7 +907,7 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(Frame, 8)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -220, 0, 44)
+            Label.Size = UDim2.new(1, -150, 0, 44)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -865,8 +916,6 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
-
-            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -150, 0.5, -9)) end
 
             local DropButton = Instance.new("TextButton")
             DropButton.Size = UDim2.new(0, 130, 0, 28)
@@ -891,10 +940,6 @@ function AbsoluteLib:CreateWindow(config)
 
             local isOpen = false
             local function ToggleDrop()
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then
-                    AbsoluteLib:Notify({ Title = "Opção Indisponível", Content = "Esta opção está " .. string.lower(Tag) .. "!", Duration = 2 })
-                    return
-                end
                 isOpen = not isOpen
                 local targetHeight = isOpen and (50 + #Options * 28) or 44
                 Tween(Frame, {0.25, Enum.EasingStyle.Quart}, {Size = UDim2.new(1, -15, 0, targetHeight)})
@@ -918,7 +963,9 @@ function AbsoluteLib:CreateWindow(config)
                 OptBtn.Parent = OptionsContainer
                 AddCorner(OptBtn, 4)
 
-                OptBtn.MouseButton1Click:Connect(function() SelectOption(opt) end)
+                OptBtn.MouseButton1Click:Connect(function()
+                    SelectOption(opt)
+                end)
             end
 
             DropButton.MouseButton1Click:Connect(ToggleDrop)
@@ -930,23 +977,21 @@ function AbsoluteLib:CreateWindow(config)
             }
         end
 
-        -- COMPONENTE: TEXTBOX
+        -- COMPONENTE: TEXTBOX / INPUT
         function TabObj:CreateTextBox(inputConfig)
             inputConfig = inputConfig or {}
             local Name = inputConfig.Name or "Input"
             local Placeholder = inputConfig.Placeholder or "Digite aqui..."
-            local Tag = inputConfig.Tag
             local Callback = inputConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
-            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -220, 1, 0)
+            Label.Size = UDim2.new(1, -160, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -955,8 +1000,6 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
-
-            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -160, 0.5, -9)) end
 
             local Box = Instance.new("TextBox")
             Box.Size = UDim2.new(0, 140, 0, 26)
@@ -972,7 +1015,6 @@ function AbsoluteLib:CreateWindow(config)
             AddCorner(Box, 6)
 
             Box.FocusLost:Connect(function(enterPressed)
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 task.spawn(Callback, Box.Text, enterPressed)
             end)
 
@@ -988,18 +1030,16 @@ function AbsoluteLib:CreateWindow(config)
             kbConfig = kbConfig or {}
             local Name = kbConfig.Name or "Keybind"
             local CurrentKey = kbConfig.Default or Enum.KeyCode.E
-            local Tag = kbConfig.Tag
             local Callback = kbConfig.Callback or function() end
 
             local Frame = Instance.new("Frame")
             Frame.Size = UDim2.new(1, -15, 0, 44)
             Frame.BackgroundColor3 = Color3.fromRGB(16, 17, 26)
-            Frame.ClipsDescendants = true
             Frame.Parent = TabPage
             AddCorner(Frame, 8)
 
             local Label = Instance.new("TextLabel")
-            Label.Size = UDim2.new(1, -200, 1, 0)
+            Label.Size = UDim2.new(1, -130, 1, 0)
             Label.Position = UDim2.new(0, 15, 0, 0)
             Label.BackgroundTransparency = 1
             Label.Text = Name
@@ -1008,8 +1048,6 @@ function AbsoluteLib:CreateWindow(config)
             Label.Font = Enum.Font.GothamSemibold
             Label.TextXAlignment = Enum.TextXAlignment.Left
             Label.Parent = Frame
-
-            if Tag then CreateBadge(Frame, Tag, UDim2.new(1, -135, 0.5, -9)) end
 
             local KeyBtn = Instance.new("TextButton")
             KeyBtn.Size = UDim2.new(0, 110, 0, 26)
@@ -1024,7 +1062,6 @@ function AbsoluteLib:CreateWindow(config)
 
             local Binding = false
             KeyBtn.MouseButton1Click:Connect(function()
-                if Tag == "BLOQUEADO" or Tag == "REMOVIDO" then return end
                 if Binding then return end
                 Binding = true
                 KeyBtn.Text = "..."
