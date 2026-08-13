@@ -1202,8 +1202,7 @@ function TabObj:CreatePlayerSelector(selectorConfig)
                 currentSelection = plrName
                 DropButton.Text = plrName .. " ▼"
                 task.spawn(Callback, plrName)
-            end
-                
+            end       
     return WindowObj
 end
 
